@@ -2,111 +2,134 @@ import { useEffect, useState } from 'react';
 import './App.css';
 
 function App() {
+  // Estado para controlar qué pantalla vemos: 'alumnos' o 'materias'
+  const [vista, setVista] = useState('alumnos');
+
+  // --- LÓGICA DE ALUMNOS ---
   const [alumnos, setAlumnos] = useState([]);
-  
-  // 1. Agregamos los campos al estado inicial
   const [nuevoAlumno, setNuevoAlumno] = useState({
-    matricula: '',
-    nombre: '',
-    apellido: '',
-    fecha_nacimiento: '',
-    direccion: ''
+    matricula: '', nombre: '', apellido: '', fecha_nacimiento: '', direccion: ''
   });
+
+  // --- LÓGICA DE MATERIAS ---
+  const [materias, setMaterias] = useState([]);
+  const [nuevaMateria, setNuevaMateria] = useState({
+    nombre_materia: '', clave_materia: '', descripcion: ''
+  });
+
+  // Cargar datos iniciales
+  useEffect(() => {
+    if (vista === 'alumnos') cargarAlumnos();
+    if (vista === 'materias') cargarMaterias();
+  }, [vista]);
 
   const cargarAlumnos = () => {
     fetch('http://localhost:3001/api/alumnos')
-      .then(response => response.json())
+      .then(res => res.json())
       .then(data => setAlumnos(data))
-      .catch(error => console.error('Error:', error));
+      .catch(err => console.error(err));
   };
 
-  useEffect(() => {
-    cargarAlumnos();
-  }, []);
+  const cargarMaterias = () => {
+    fetch('http://localhost:3001/api/materias')
+      .then(res => res.json())
+      .then(data => setMaterias(data))
+      .catch(err => console.error(err));
+  };
 
-  const handleChange = (e) => {
-    setNuevoAlumno({
-      ...nuevoAlumno,
-      [e.target.name]: e.target.value
+  // Manejadores de Formularios
+  const handleAlumnoChange = (e) => setNuevoAlumno({ ...nuevoAlumno, [e.target.name]: e.target.value });
+  const handleMateriaChange = (e) => setNuevaMateria({ ...nuevaMateria, [e.target.name]: e.target.value });
+
+  const submitAlumno = (e) => {
+    e.preventDefault();
+    fetch('http://localhost:3001/api/alumnos', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nuevoAlumno)
+    }).then(() => {
+      alert('Alumno registrado');
+      setNuevoAlumno({ matricula: '', nombre: '', apellido: '', fecha_nacimiento: '', direccion: '' });
+      cargarAlumnos();
     });
   };
 
-  const handleSubmit = (e) => {
+  const submitMateria = (e) => {
     e.preventDefault();
-
-    fetch('http://localhost:3001/api/alumnos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(nuevoAlumno),
-    })
-      .then(response => response.json())
-      .then(() => {
-        alert('Alumno registrado correctamente');
-        // Limpiamos todo el formulario
-        setNuevoAlumno({ matricula: '', nombre: '', apellido: '', fecha_nacimiento: '', direccion: '' });
-        cargarAlumnos();
-      })
-      .catch(error => console.error('Error al registrar:', error));
+    fetch('http://localhost:3001/api/materias', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nuevaMateria)
+    }).then(() => {
+      alert('Materia registrada');
+      setNuevaMateria({ nombre_materia: '', clave_materia: '', descripcion: '' });
+      cargarMaterias();
+    });
   };
 
   return (
-    <div className="container">
-      <h1>Panel de Maestros</h1>
-
-      {/* FORMULARIO COMPLETO */}
-      <div style={{ marginBottom: '20px', padding: '20px', border: '1px solid #ccc' }}>
-        <h3>Registrar Nuevo Alumno</h3>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '400px' }}>
-          <input 
-            type="text" name="matricula" placeholder="Matrícula" 
-            value={nuevoAlumno.matricula} onChange={handleChange} required 
-          />
-          <input 
-            type="text" name="nombre" placeholder="Nombre(s)" 
-            value={nuevoAlumno.nombre} onChange={handleChange} required 
-          />
-          <input 
-            type="text" name="apellido" placeholder="Apellido(s)" 
-            value={nuevoAlumno.apellido} onChange={handleChange} required 
-          />
-          <label style={{textAlign: 'left', fontSize: '12px'}}>Fecha de Nacimiento:</label>
-          <input 
-            type="date" name="fecha_nacimiento" 
-            value={nuevoAlumno.fecha_nacimiento} onChange={handleChange} 
-          />
-          <input 
-            type="text" name="direccion" placeholder="Dirección" 
-            value={nuevoAlumno.direccion} onChange={handleChange} 
-          />
-
-          <button type="submit">Guardar Alumno</button>
-        </form>
+    <div className="container" style={{maxWidth: '800px', margin: '0 auto'}}>
+      <h1>Panel Escolar</h1>
+      
+      {/* NAVEGACIÓN SIMPLE */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', justifyContent: 'center' }}>
+        <button onClick={() => setVista('alumnos')} style={{ backgroundColor: vista === 'alumnos' ? '#646cff' : '#333' }}>
+          Gestionar Alumnos
+        </button>
+        <button onClick={() => setVista('materias')} style={{ backgroundColor: vista === 'materias' ? '#646cff' : '#333' }}>
+          Gestionar Materias
+        </button>
       </div>
 
-      {/* TABLA COMPLETA */}
-      <h2>Lista de Alumnos</h2>
-      <table border="1" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th>Matrícula</th>
-            <th>Nombre</th>
-            <th>Apellido</th>
-            <th>Fecha Nac.</th>
-            <th>Dirección</th>
-          </tr>
-        </thead>
-        <tbody>
-          {alumnos.map((alumno) => (
-            <tr key={alumno.id}>
-              <td>{alumno.matricula}</td>
-              <td>{alumno.nombre}</td>
-              <td>{alumno.apellido}</td>
-              <td>{alumno.fecha_nacimiento}</td>
-              <td>{alumno.direccion}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* VISTA DE ALUMNOS */}
+      {vista === 'alumnos' && (
+        <div>
+          <h2>Registro de Alumnos</h2>
+          <form onSubmit={submitAlumno} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+            <div style={{display: 'flex', gap: '5px'}}>
+              <input name="matricula" placeholder="Matrícula" value={nuevoAlumno.matricula} onChange={handleAlumnoChange} required />
+              <input name="nombre" placeholder="Nombre(s)" value={nuevoAlumno.nombre} onChange={handleAlumnoChange} required />
+              <input name="apellido" placeholder="Apellido(s)" value={nuevoAlumno.apellido} onChange={handleAlumnoChange} required />
+            </div>
+            <div style={{display: 'flex', gap: '5px'}}>
+              <input type="date" name="fecha_nacimiento" value={nuevoAlumno.fecha_nacimiento} onChange={handleAlumnoChange} />
+              <input name="direccion" placeholder="Dirección" style={{flex:1}} value={nuevoAlumno.direccion} onChange={handleAlumnoChange} />
+            </div>
+            <button type="submit">Guardar Alumno</button>
+          </form>
+
+          <table border="1" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{backgroundColor: '#333', color: 'white'}}><th>Matrícula</th><th>Nombre</th><th>Apellido</th></tr>
+            </thead>
+            <tbody>
+              {alumnos.map(a => (
+                <tr key={a.id}><td>{a.matricula}</td><td>{a.nombre}</td><td>{a.apellido}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* VISTA DE MATERIAS */}
+      {vista === 'materias' && (
+        <div>
+          <h2>Registro de Materias</h2>
+          <form onSubmit={submitMateria} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+            <input name="nombre_materia" placeholder="Nombre de la Materia (ej. Matemáticas I)" value={nuevaMateria.nombre_materia} onChange={handleMateriaChange} required />
+            <input name="clave_materia" placeholder="Clave (ej. MAT-101)" value={nuevaMateria.clave_materia} onChange={handleMateriaChange} required />
+            <textarea name="descripcion" placeholder="Descripción breve..." value={nuevaMateria.descripcion} onChange={handleMateriaChange} />
+            <button type="submit" style={{backgroundColor: '#2e7d32'}}>Guardar Materia</button>
+          </form>
+
+          <table border="1" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{backgroundColor: '#333', color: 'white'}}><th>Clave</th><th>Materia</th><th>Descripción</th></tr>
+            </thead>
+            <tbody>
+              {materias.map(m => (
+                <tr key={m.id}><td>{m.clave_materia}</td><td>{m.nombre_materia}</td><td>{m.descripcion}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
