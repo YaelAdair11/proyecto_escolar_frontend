@@ -4,14 +4,15 @@ import './App.css';
 function App() {
   const [alumnos, setAlumnos] = useState([]);
   
-  // Estados para el formulario
+  // 1. Agregamos los campos al estado inicial
   const [nuevoAlumno, setNuevoAlumno] = useState({
     matricula: '',
     nombre: '',
-    apellido: ''
+    apellido: '',
+    fecha_nacimiento: '',
+    direccion: ''
   });
 
-  // Función para cargar alumnos (GET)
   const cargarAlumnos = () => {
     fetch('http://localhost:3001/api/alumnos')
       .then(response => response.json())
@@ -23,7 +24,6 @@ function App() {
     cargarAlumnos();
   }, []);
 
-  // Función para capturar lo que escribe el usuario
   const handleChange = (e) => {
     setNuevoAlumno({
       ...nuevoAlumno,
@@ -31,22 +31,20 @@ function App() {
     });
   };
 
-  // Función para enviar el formulario (POST)
   const handleSubmit = (e) => {
-    e.preventDefault(); // Evita que la página se recargue
+    e.preventDefault();
 
     fetch('http://localhost:3001/api/alumnos', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(nuevoAlumno),
     })
       .then(response => response.json())
       .then(() => {
         alert('Alumno registrado correctamente');
-        setNuevoAlumno({ matricula: '', nombre: '', apellido: '' }); // Limpiar formulario
-        cargarAlumnos(); // Recargar la tabla para ver el nuevo alumno
+        // Limpiamos todo el formulario
+        setNuevoAlumno({ matricula: '', nombre: '', apellido: '', fecha_nacimiento: '', direccion: '' });
+        cargarAlumnos();
       })
       .catch(error => console.error('Error al registrar:', error));
   };
@@ -55,46 +53,46 @@ function App() {
     <div className="container">
       <h1>Panel de Maestros</h1>
 
-      {/* FORMULARIO DE REGISTRO */}
+      {/* FORMULARIO COMPLETO */}
       <div style={{ marginBottom: '20px', padding: '20px', border: '1px solid #ccc' }}>
         <h3>Registrar Nuevo Alumno</h3>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '400px' }}>
           <input 
-            type="text" 
-            name="matricula" 
-            placeholder="Matrícula" 
-            value={nuevoAlumno.matricula} 
-            onChange={handleChange} 
-            required 
+            type="text" name="matricula" placeholder="Matrícula" 
+            value={nuevoAlumno.matricula} onChange={handleChange} required 
           />
           <input 
-            type="text" 
-            name="nombre" 
-            placeholder="Nombre(s)" 
-            value={nuevoAlumno.nombre} 
-            onChange={handleChange} 
-            required 
+            type="text" name="nombre" placeholder="Nombre(s)" 
+            value={nuevoAlumno.nombre} onChange={handleChange} required 
           />
           <input 
-            type="text" 
-            name="apellido" 
-            placeholder="Apellido(s)" 
-            value={nuevoAlumno.apellido} 
-            onChange={handleChange} 
-            required 
+            type="text" name="apellido" placeholder="Apellido(s)" 
+            value={nuevoAlumno.apellido} onChange={handleChange} required 
           />
-          <button type="submit">Guardar</button>
+          <label style={{textAlign: 'left', fontSize: '12px'}}>Fecha de Nacimiento:</label>
+          <input 
+            type="date" name="fecha_nacimiento" 
+            value={nuevoAlumno.fecha_nacimiento} onChange={handleChange} 
+          />
+          <input 
+            type="text" name="direccion" placeholder="Dirección" 
+            value={nuevoAlumno.direccion} onChange={handleChange} 
+          />
+
+          <button type="submit">Guardar Alumno</button>
         </form>
       </div>
 
-      {/* TABLA DE ALUMNOS */}
+      {/* TABLA COMPLETA */}
       <h2>Lista de Alumnos</h2>
-      <table border="1" style={{ width: '100%', textAlign: 'left' }}>
+      <table border="1" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
             <th>Matrícula</th>
             <th>Nombre</th>
             <th>Apellido</th>
+            <th>Fecha Nac.</th>
+            <th>Dirección</th>
           </tr>
         </thead>
         <tbody>
@@ -103,6 +101,8 @@ function App() {
               <td>{alumno.matricula}</td>
               <td>{alumno.nombre}</td>
               <td>{alumno.apellido}</td>
+              <td>{alumno.fecha_nacimiento}</td>
+              <td>{alumno.direccion}</td>
             </tr>
           ))}
         </tbody>
