@@ -34,7 +34,7 @@ function App() {
   }, [vista]);
 
   const cargarData = (entidad, setter) => {
-    fetch(`http://localhost:3001/api/${entidad}`)
+    fetch(`http://localhost:8080/api/${entidad}`)
       .then(res => res.json())
       .then(data => setter(data))
       .catch(err => console.error(err));
@@ -46,7 +46,7 @@ function App() {
 
   const enviarFormulario = (e, entidad, data, setterClean, estadoClean, refreshSetter) => {
     e.preventDefault();
-    fetch(`http://localhost:3001/api/${entidad}`, {
+    fetch(`http://localhost:8080/api/${entidad}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
     }).then(() => {
       alert('Registro exitoso');
@@ -162,9 +162,9 @@ function App() {
                 <tr key={a.id}>
                   <td>{a.id}</td>
                   {/* Accedemos a los objetos anidados gracias al Join del backend */}
-                  <td>{a.maestros ? `${a.maestros.nombre} ${a.maestros.apellido}` : 'Sin datos'}</td>
-                  <td>{a.materias ? a.materias.nombre_materia : 'Sin datos'}</td>
-                  <td>{a.turnos ? a.turnos.nombre_turno : 'Sin datos'}</td>
+                  <td>{a.maestro ? `${a.maestro.nombre} ${a.maestro.apellido}` : 'Sin datos'}</td>
+                  <td>{a.materia ? a.materia.nombre_materia : 'Sin datos'}</td>
+                  <td>{a.turno ? a.turno.nombre_turno : 'Sin datos'}</td>
                 </tr>
               ))}
             </tbody>
