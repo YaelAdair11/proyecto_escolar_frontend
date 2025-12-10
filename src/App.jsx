@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
+import { LayoutDashboard, Users, GraduationCap, Clock, BookOpen, School } from 'lucide-react'; // Si no instalaste lucide, borra esta línea y los iconos
 import './App.css';
 
 function App() {
   const [vista, setVista] = useState('alumnos');
-
+  
   // --- ESTADOS DE DATOS ---
   const [alumnos, setAlumnos] = useState([]);
   const [materias, setMaterias] = useState([]);
@@ -13,15 +14,16 @@ function App() {
 
   // --- FORMULARIOS ---
   const [nuevoAlumno, setNuevoAlumno] = useState({ matricula: '', nombre: '', apellido: '', fecha_nacimiento: '', direccion: '' });
-  const [nuevaMateria, setNuevaMateria] = useState({ nombreMateria: '', claveMateria: '', descripcion: '' }); // Ajustado a camelCase
-  const [nuevoTurno, setNuevoTurno] = useState({ nombreTurno: '' }); // Ajustado a camelCase
+  const [nuevaMateria, setNuevaMateria] = useState({ nombre_materia: '', clave_materia: '', descripcion: '' });
+  const [nuevoTurno, setNuevoTurno] = useState({ nombre_turno: '' });
   const [nuevoMaestro, setNuevoMaestro] = useState({ nombre: '', apellido: '', email: '', telefono: '' });
   
-  // Estado especial para Asignaciones
+  // Estado especial para Asignaciones (guarda IDs)
   const [nuevaAsignacion, setNuevaAsignacion] = useState({ maestro_id: '', materia_id: '', turno_id: '' });
 
   // --- CARGA INICIAL ---
   useEffect(() => {
+    // Precargamos los catálogos necesarios para los selects
     cargarData('materias', setMaterias);
     cargarData('turnos', setTurnos);
     cargarData('maestros', setMaestros);
@@ -48,16 +50,53 @@ function App() {
     fetch(`http://localhost:8080/api/${entidad}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
     }).then(() => {
-      alert('Registro exitoso');
+      // Opcional: Usar un toast/notificación más elegante en lugar de alert
+      alert('Registro guardado correctamente'); 
       setterClean(estadoClean);
       cargarData(entidad, refreshSetter);
     });
   };
 
+  // --- COMPONENTES UI REUTILIZABLES ---
+  
+  const PageHeader = ({ title, subtitle }) => (
+    <div style={{ marginBottom: '30px' }}>
+      <h1 className="header-title">{title}</h1>
+      <p className="header-subtitle">{subtitle}</p>
+    </div>
+  );
+
+  const Table = ({ data, columns }) => (
+    <div className="card table-container">
+      <table>
+        <thead>
+          <tr>
+            {columns.map(c => <th key={c}>{c.replace('_', ' ')}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {data.length > 0 ? data.map(row => (
+            <tr key={row.id}>
+              {columns.map(col => <td key={col}>{row[col]}</td>)}
+            </tr>
+          )) : (
+            <tr>
+              <td colSpan={columns.length} style={{textAlign: 'center', padding: '30px', color: '#94a3b8'}}>
+                No hay registros disponibles.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  // --- RENDERIZADO PRINCIPAL ---
+
   return (
-    <div className="container" style={{ maxWidth: '1000px', margin: '0 auto', padding: '20px' }}>
-      <h1>Sistema de Gestión Escolar</h1>
+    <div className="dashboard-layout">
       
+      {/* NAVEGACIÓN */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', flexWrap: 'wrap', justifyContent: 'center' }}>
         {['alumnos', 'maestros', 'materias', 'turnos', 'asignaciones'].map(v => (
           <button 
@@ -77,11 +116,9 @@ function App() {
             <input name="matricula" placeholder="Matrícula" value={nuevoAlumno.matricula} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
             <input name="nombre" placeholder="Nombre" value={nuevoAlumno.nombre} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
             <input name="apellido" placeholder="Apellido" value={nuevoAlumno.apellido} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
-            <input type="date" name="fecha_nacimiento" value={nuevoAlumno.fecha_nacimiento} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} />
-            <input name="direccion" placeholder="Dirección" value={nuevoAlumno.direccion} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} />
-            <button type="submit" style={btnStyle}>Guardar</button>
+            <button type="submit" style={btnStyle}>Guardar Alumno</button>
           </form>
-          {renderTable(alumnos, ['matricula', 'nombre', 'apellido', 'fechaNacimiento'])}
+          {renderTable(alumnos, ['matricula', 'nombre', 'apellido'])}
         </div>
       )}
 
@@ -93,7 +130,7 @@ function App() {
             <input name="nombre" placeholder="Nombre" value={nuevoMaestro.nombre} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} required />
             <input name="apellido" placeholder="Apellido" value={nuevoMaestro.apellido} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} required />
             <input name="email" placeholder="Email" value={nuevoMaestro.email} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} />
-            <button type="submit" style={btnStyle}>Guardar</button>
+            <button type="submit" style={btnStyle}>Guardar Maestro</button>
           </form>
           {renderTable(maestros, ['nombre', 'apellido', 'email'])}
         </div>
@@ -103,13 +140,12 @@ function App() {
       {vista === 'materias' && (
         <div>
           <h2>Gestionar Materias</h2>
-          <form onSubmit={(e) => enviarFormulario(e, 'materias', nuevaMateria, setNuevaMateria, { nombreMateria: '', claveMateria: '', descripcion: '' }, setMaterias)} style={formStyle}>
-            <input name="claveMateria" placeholder="Clave" value={nuevaMateria.claveMateria} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required />
-            <input name="nombreMateria" placeholder="Materia" value={nuevaMateria.nombreMateria} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required />
-            <input name="descripcion" placeholder="Descripción" value={nuevaMateria.descripcion} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} />
-            <button type="submit" style={btnStyle}>Guardar</button>
+          <form onSubmit={(e) => enviarFormulario(e, 'materias', nuevaMateria, setNuevaMateria, { nombre_materia: '', clave_materia: '', descripcion: '' }, setMaterias)} style={formStyle}>
+            <input name="clave_materia" placeholder="Clave" value={nuevaMateria.clave_materia} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required />
+            <input name="nombre_materia" placeholder="Materia" value={nuevaMateria.nombre_materia} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required />
+            <button type="submit" style={btnStyle}>Guardar Materia</button>
           </form>
-          {renderTable(materias, ['claveMateria', 'nombreMateria', 'descripcion'])}
+          {renderTable(materias, ['clave_materia', 'nombre_materia'])}
         </div>
       )}
 
@@ -117,18 +153,20 @@ function App() {
       {vista === 'turnos' && (
         <div>
           <h2>Gestionar Turnos</h2>
-          <form onSubmit={(e) => enviarFormulario(e, 'turnos', nuevoTurno, setNuevoTurno, { nombreTurno: '' }, setTurnos)} style={formStyle}>
-            <input name="nombreTurno" placeholder="Nombre Turno" value={nuevoTurno.nombreTurno} onChange={(e) => handleChange(e, setNuevoTurno, nuevoTurno)} required />
-            <button type="submit" style={btnStyle}>Guardar</button>
+          <form onSubmit={(e) => enviarFormulario(e, 'turnos', nuevoTurno, setNuevoTurno, { nombre_turno: '' }, setTurnos)} style={formStyle}>
+            <input name="nombre_turno" placeholder="Nombre Turno" value={nuevoTurno.nombre_turno} onChange={(e) => handleChange(e, setNuevoTurno, nuevoTurno)} required />
+            <button type="submit" style={btnStyle}>Guardar Turno</button>
           </form>
-          {renderTable(turnos, ['nombreTurno'])}
+          {renderTable(turnos, ['nombre_turno'])}
         </div>
       )}
 
-      {/* --- VISTA ASIGNACIONES --- */}
+      {/* --- VISTA ASIGNACIONES (LA IMPORTANTE) --- */}
       {vista === 'asignaciones' && (
         <div>
           <h2>Asignación de Carga Académica</h2>
+          <p>Vincula un Maestro con una Materia y un Turno.</p>
+          
           <form onSubmit={(e) => enviarFormulario(e, 'asignaciones', nuevaAsignacion, setNuevaAsignacion, { maestro_id: '', materia_id: '', turno_id: '' }, setAsignaciones)} style={formStyle}>
             
             <select name="maestro_id" value={nuevaAsignacion.maestro_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} required style={inputStyle}>
@@ -138,17 +176,18 @@ function App() {
 
             <select name="materia_id" value={nuevaAsignacion.materia_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} required style={inputStyle}>
               <option value="">-- Selecciona Materia --</option>
-              {materias.map(m => <option key={m.id} value={m.id}>{m.nombreMateria}</option>)}
+              {materias.map(m => <option key={m.id} value={m.id}>{m.nombre_materia}</option>)}
             </select>
 
             <select name="turno_id" value={nuevaAsignacion.turno_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} required style={inputStyle}>
               <option value="">-- Selecciona Turno --</option>
-              {turnos.map(t => <option key={t.id} value={t.id}>{t.nombreTurno}</option>)}
+              {turnos.map(t => <option key={t.id} value={t.id}>{t.nombre_turno}</option>)}
             </select>
 
             <button type="submit" style={btnStyle}>Asignar</button>
           </form>
 
+          {/* Tabla de asignaciones con nombres reales */}
           <table border="1" cellPadding="10" style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left'}}>
             <thead>
               <tr style={{background:'#333', color: 'white'}}>
@@ -159,9 +198,10 @@ function App() {
               {asignaciones.map(a => (
                 <tr key={a.id}>
                   <td>{a.id}</td>
+                  {/* Accedemos a los objetos anidados gracias al Join del backend */}
                   <td>{a.maestro ? `${a.maestro.nombre} ${a.maestro.apellido}` : 'Sin datos'}</td>
-                  <td>{a.materia ? a.materia.nombreMateria : 'Sin datos'}</td>
-                  <td>{a.turno ? a.turno.nombreTurno : 'Sin datos'}</td>
+                  <td>{a.materia ? a.materia.nombre_materia : 'Sin datos'}</td>
+                  <td>{a.turno ? a.turno.nombre_turno : 'Sin datos'}</td>
                 </tr>
               ))}
             </tbody>
@@ -172,27 +212,27 @@ function App() {
   );
 }
 
+// Estilos simples para no repetir código
 const formStyle = { display: 'flex', gap: '10px', marginBottom: '20px', background: '#f4f4f4', padding: '15px', borderRadius: '8px', flexWrap: 'wrap' };
 const inputStyle = { padding: '8px', flex: 1 };
 const btnStyle = { background: '#28a745', color: 'white', padding: '10px', border: 'none', cursor: 'pointer' };
 
+// Función auxiliar para renderizar tablas simples
 const renderTable = (data, columns) => (
-  <div style={{overflowX: 'auto'}}>
-    <table border="1" cellPadding="10" style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left'}}>
-      <thead>
-        <tr style={{background:'#333', color: 'white'}}>
-          {columns.map(c => <th key={c} style={{textTransform: 'capitalize'}}>{c.replace(/([A-Z])/g, ' $1').trim()}</th>)}
+  <table border="1" cellPadding="10" style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left'}}>
+    <thead>
+      <tr style={{background:'#333', color: 'white'}}>
+        {columns.map(c => <th key={c} style={{textTransform: 'capitalize'}}>{c.replace('_', ' ')}</th>)}
+      </tr>
+    </thead>
+    <tbody>
+      {data.map(row => (
+        <tr key={row.id}>
+          {columns.map(col => <td key={col}>{row[col]}</td>)}
         </tr>
-      </thead>
-      <tbody>
-        {data.map(row => (
-          <tr key={row.id}>
-            {columns.map(col => <td key={col}>{row[col]}</td>)}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
+      ))}
+    </tbody>
+  </table>
 );
 
 export default App;
