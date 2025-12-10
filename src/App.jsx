@@ -131,7 +131,7 @@ function App() {
                   <Input label="Nombre" name="nombre" value={nuevoAlumno.nombre} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
                   <Input label="Apellido" name="apellido" value={nuevoAlumno.apellido} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
                   <Input label="Dirección" name="direccion" value={nuevoAlumno.direccion} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} />
-                  <Input label="Fecha Nacimiento" type="date" name="fecha_nacimiento" value={nuevoAlumno.fecha_nacimiento} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} />
+                  <Input label="Fecha Nacimiento" type="date" name="fechaNacimiento" value={nuevoAlumno.fecha_nacimiento} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} />
                 </div>
                 <button type="submit" className="btn-primary">Registrar Alumno</button>
               </form>
@@ -164,12 +164,12 @@ function App() {
             <PageHeader title="Catálogo de Materias" subtitle="Configuración de asignaturas disponibles." />
             <div className="card">
               <form onSubmit={(e) => enviarFormulario(e, 'materias', nuevaMateria, setNuevaMateria, initialMateria, setMaterias)} style={{display: 'flex', alignItems: 'flex-end', gap: '15px'}}>
-                <Input label="Clave" name="clave_materia" value={nuevaMateria.clave_materia} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required />
-                <Input label="Nombre de la Materia" name="nombre_materia" value={nuevaMateria.nombre_materia} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required style={{flex: 2}} />
+                <Input label="Clave" name="claveMateria" value={nuevaMateria.clave_materia} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required />
+                <Input label="Nombre de la Materia" name="nombreMateria" value={nuevaMateria.nombre_materia} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required style={{flex: 2}} />
                 <button type="submit" className="btn-primary" style={{marginBottom: '2px'}}>Agregar</button>
               </form>
             </div>
-            <Table data={materias} columns={['clave_materia', 'nombre_materia']} />
+            <Table data={materias} columns={['claveMateria', 'nombreMateria']} />
           </>
         )}
 
@@ -178,11 +178,11 @@ function App() {
             <PageHeader title="Gestión de Turnos" subtitle="Horarios disponibles para asignación." />
             <div className="card" style={{maxWidth: '500px'}}>
               <form onSubmit={(e) => enviarFormulario(e, 'turnos', nuevoTurno, setNuevoTurno, initialTurno, setTurnos)} style={{display: 'flex', gap: '15px', alignItems: 'flex-end'}}>
-                <Input label="Nombre del Turno" name="nombre_turno" value={nuevoTurno.nombre_turno} onChange={(e) => handleChange(e, setNuevoTurno, nuevoTurno)} required style={{flex: 1}}/>
+                <Input label="Nombre del Turno" name="nombreTurno" value={nuevoTurno.nombre_turno} onChange={(e) => handleChange(e, setNuevoTurno, nuevoTurno)} required style={{flex: 1}}/>
                 <button type="submit" className="btn-primary">Crear</button>
               </form>
             </div>
-            <Table data={turnos} columns={['nombre_turno']} />
+            <Table data={turnos} columns={['nombreTurno']} />
           </>
         )}
 
@@ -195,8 +195,8 @@ function App() {
               <form onSubmit={(e) => enviarFormulario(e, 'asignaciones', nuevaAsignacion, setNuevaAsignacion, initialAsignacion, setAsignaciones)}>
                 <div className="form-grid">
                   <Select label="Docente" name="maestro_id" value={nuevaAsignacion.maestro_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} options={maestros} labelKey={m => `${m.nombre} ${m.apellido}`} />
-                  <Select label="Materia" name="materia_id" value={nuevaAsignacion.materia_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} options={materias} labelKey="nombre_materia" />
-                  <Select label="Turno" name="turno_id" value={nuevaAsignacion.turno_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} options={turnos} labelKey="nombre_turno" />
+                  <Select label="Materia" name="materia_id" value={nuevaAsignacion.materia_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} options={materias} labelKey="nombreMateria" />
+                  <Select label="Turno" name="turno_id" value={nuevaAsignacion.turno_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} options={turnos} labelKey="nombreTurno" />
                 </div>
                 <button type="submit" className="btn-primary">Asignar Carga</button>
               </form>
