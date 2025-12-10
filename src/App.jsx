@@ -13,13 +13,17 @@ function App() {
   const [asignaciones, setAsignaciones] = useState([]);
 
   // --- FORMULARIOS ---
-  const [nuevoAlumno, setNuevoAlumno] = useState({ matricula: '', nombre: '', apellido: '', fecha_nacimiento: '', direccion: '' });
-  const [nuevaMateria, setNuevaMateria] = useState({ nombre_materia: '', clave_materia: '', descripcion: '' });
-  const [nuevoTurno, setNuevoTurno] = useState({ nombre_turno: '' });
-  const [nuevoMaestro, setNuevoMaestro] = useState({ nombre: '', apellido: '', email: '', telefono: '' });
-  
-  // Estado especial para Asignaciones (guarda IDs)
-  const [nuevaAsignacion, setNuevaAsignacion] = useState({ maestro_id: '', materia_id: '', turno_id: '' });
+  const initialAlumno = { matricula: '', nombre: '', apellido: '', fecha_nacimiento: '', direccion: '' };
+  const initialMateria = { nombre_materia: '', clave_materia: '', descripcion: '' };
+  const initialTurno = { nombre_turno: '' };
+  const initialMaestro = { nombre: '', apellido: '', email: '', telefono: '' };
+  const initialAsignacion = { maestro_id: '', materia_id: '', turno_id: '' };
+
+  const [nuevoAlumno, setNuevoAlumno] = useState(initialAlumno);
+  const [nuevaMateria, setNuevaMateria] = useState(initialMateria);
+  const [nuevoTurno, setNuevoTurno] = useState(initialTurno);
+  const [nuevoMaestro, setNuevoMaestro] = useState(initialMaestro);
+  const [nuevaAsignacion, setNuevaAsignacion] = useState(initialAsignacion);
 
   // --- CARGA INICIAL ---
   useEffect(() => {
@@ -96,143 +100,167 @@ function App() {
   return (
     <div className="dashboard-layout">
       
-      {/* NAVEGACIÓN */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', flexWrap: 'wrap', justifyContent: 'center' }}>
-        {['alumnos', 'maestros', 'materias', 'turnos', 'asignaciones'].map(v => (
-          <button 
-            key={v} onClick={() => setVista(v)}
-            style={{ backgroundColor: vista === v ? '#007bff' : '#333', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '5px', cursor: 'pointer', textTransform: 'capitalize' }}
-          >
-            {v}
-          </button>
-        ))}
-      </div>
-
-      {/* --- VISTA ALUMNOS --- */}
-      {vista === 'alumnos' && (
-        <div>
-          <h2>Gestionar Alumnos</h2>
-          <form onSubmit={(e) => enviarFormulario(e, 'alumnos', nuevoAlumno, setNuevoAlumno, { matricula: '', nombre: '', apellido: '', fecha_nacimiento: '', direccion: '' }, setAlumnos)} style={formStyle}>
-            <input name="matricula" placeholder="Matrícula" value={nuevoAlumno.matricula} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
-            <input name="nombre" placeholder="Nombre" value={nuevoAlumno.nombre} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
-            <input name="apellido" placeholder="Apellido" value={nuevoAlumno.apellido} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
-            <button type="submit" style={btnStyle}>Guardar Alumno</button>
-          </form>
-          {renderTable(alumnos, ['matricula', 'nombre', 'apellido'])}
+      {/* SIDEBAR DE NAVEGACIÓN */}
+      <aside className="sidebar">
+        <div className="brand">
+          <School size={28} /> {/* Icono */}
+          <span>EduPortal</span>
         </div>
-      )}
+        
+        <nav className="nav-menu">
+          <NavButton active={vista === 'alumnos'} onClick={() => setVista('alumnos')} icon={<Users size={20}/>} label="Alumnos" />
+          <NavButton active={vista === 'maestros'} onClick={() => setVista('maestros')} icon={<GraduationCap size={20}/>} label="Docentes" />
+          <NavButton active={vista === 'materias'} onClick={() => setVista('materias')} icon={<BookOpen size={20}/>} label="Materias" />
+          <NavButton active={vista === 'turnos'} onClick={() => setVista('turnos')} icon={<Clock size={20}/>} label="Turnos" />
+          <div style={{height: '1px', background: 'rgba(255,255,255,0.1)', margin: '10px 0'}}></div>
+          <NavButton active={vista === 'asignaciones'} onClick={() => setVista('asignaciones')} icon={<LayoutDashboard size={20}/>} label="Carga Académica" />
+        </nav>
+      </aside>
 
-      {/* --- VISTA MAESTROS --- */}
-      {vista === 'maestros' && (
-        <div>
-          <h2>Gestionar Maestros</h2>
-          <form onSubmit={(e) => enviarFormulario(e, 'maestros', nuevoMaestro, setNuevoMaestro, { nombre: '', apellido: '', email: '', telefono: '' }, setMaestros)} style={formStyle}>
-            <input name="nombre" placeholder="Nombre" value={nuevoMaestro.nombre} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} required />
-            <input name="apellido" placeholder="Apellido" value={nuevoMaestro.apellido} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} required />
-            <input name="email" placeholder="Email" value={nuevoMaestro.email} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} />
-            <button type="submit" style={btnStyle}>Guardar Maestro</button>
-          </form>
-          {renderTable(maestros, ['nombre', 'apellido', 'email'])}
-        </div>
-      )}
+      {/* ÁREA DE CONTENIDO */}
+      <main className="main-content">
+        
+        {vista === 'alumnos' && (
+          <>
+            <PageHeader title="Directorio de Alumnos" subtitle="Gestiona la información y matrícula de los estudiantes." />
+            <div className="card">
+              <h3 style={{marginTop:0, marginBottom: '20px'}}>Nuevo Estudiante</h3>
+              <form onSubmit={(e) => enviarFormulario(e, 'alumnos', nuevoAlumno, setNuevoAlumno, initialAlumno, setAlumnos)}>
+                <div className="form-grid">
+                  <Input label="Matrícula" name="matricula" value={nuevoAlumno.matricula} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
+                  <Input label="Nombre" name="nombre" value={nuevoAlumno.nombre} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
+                  <Input label="Apellido" name="apellido" value={nuevoAlumno.apellido} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
+                  <Input label="Dirección" name="direccion" value={nuevoAlumno.direccion} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} />
+                  <Input label="Fecha Nacimiento" type="date" name="fechaNacimiento" value={nuevoAlumno.fecha_nacimiento} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} />
+                </div>
+                <button type="submit" className="btn-primary">Registrar Alumno</button>
+              </form>
+            </div>
+            <Table data={alumnos} columns={['matricula', 'nombre', 'apellido', 'direccion']} />
+          </>
+        )}
 
-      {/* --- VISTA MATERIAS --- */}
-      {vista === 'materias' && (
-        <div>
-          <h2>Gestionar Materias</h2>
-          <form onSubmit={(e) => enviarFormulario(e, 'materias', nuevaMateria, setNuevaMateria, { nombre_materia: '', clave_materia: '', descripcion: '' }, setMaterias)} style={formStyle}>
-            <input name="clave_materia" placeholder="Clave" value={nuevaMateria.clave_materia} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required />
-            <input name="nombre_materia" placeholder="Materia" value={nuevaMateria.nombre_materia} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required />
-            <button type="submit" style={btnStyle}>Guardar Materia</button>
-          </form>
-          {renderTable(materias, ['clave_materia', 'nombre_materia'])}
-        </div>
-      )}
+        {vista === 'maestros' && (
+          <>
+            <PageHeader title="Plantilla Docente" subtitle="Administración de profesores y datos de contacto." />
+            <div className="card">
+              <h3 style={{marginTop:0, marginBottom: '20px'}}>Registrar Docente</h3>
+              <form onSubmit={(e) => enviarFormulario(e, 'maestros', nuevoMaestro, setNuevoMaestro, initialMaestro, setMaestros)}>
+                <div className="form-grid">
+                  <Input label="Nombre" name="nombre" value={nuevoMaestro.nombre} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} required />
+                  <Input label="Apellido" name="apellido" value={nuevoMaestro.apellido} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} required />
+                  <Input label="Email Institucional" type="email" name="email" value={nuevoMaestro.email} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} />
+                  <Input label="Teléfono" name="telefono" value={nuevoMaestro.telefono} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} />
+                </div>
+                <button type="submit" className="btn-primary">Guardar Docente</button>
+              </form>
+            </div>
+            <Table data={maestros} columns={['nombre', 'apellido', 'email', 'telefono']} />
+          </>
+        )}
 
-      {/* --- VISTA TURNOS --- */}
-      {vista === 'turnos' && (
-        <div>
-          <h2>Gestionar Turnos</h2>
-          <form onSubmit={(e) => enviarFormulario(e, 'turnos', nuevoTurno, setNuevoTurno, { nombre_turno: '' }, setTurnos)} style={formStyle}>
-            <input name="nombre_turno" placeholder="Nombre Turno" value={nuevoTurno.nombre_turno} onChange={(e) => handleChange(e, setNuevoTurno, nuevoTurno)} required />
-            <button type="submit" style={btnStyle}>Guardar Turno</button>
-          </form>
-          {renderTable(turnos, ['nombre_turno'])}
-        </div>
-      )}
+        {vista === 'materias' && (
+          <>
+            <PageHeader title="Catálogo de Materias" subtitle="Configuración de asignaturas disponibles." />
+            <div className="card">
+              <form onSubmit={(e) => enviarFormulario(e, 'materias', nuevaMateria, setNuevaMateria, initialMateria, setMaterias)} style={{display: 'flex', alignItems: 'flex-end', gap: '15px'}}>
+                <Input label="Clave" name="claveMateria" value={nuevaMateria.clave_materia} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required />
+                <Input label="Nombre de la Materia" name="nombreMateria" value={nuevaMateria.nombre_materia} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required style={{flex: 2}} />
+                <button type="submit" className="btn-primary" style={{marginBottom: '2px'}}>Agregar</button>
+              </form>
+            </div>
+            <Table data={materias} columns={['claveMateria', 'nombreMateria']} />
+          </>
+        )}
 
-      {/* --- VISTA ASIGNACIONES (LA IMPORTANTE) --- */}
-      {vista === 'asignaciones' && (
-        <div>
-          <h2>Asignación de Carga Académica</h2>
-          <p>Vincula un Maestro con una Materia y un Turno.</p>
-          
-          <form onSubmit={(e) => enviarFormulario(e, 'asignaciones', nuevaAsignacion, setNuevaAsignacion, { maestro_id: '', materia_id: '', turno_id: '' }, setAsignaciones)} style={formStyle}>
+        {vista === 'turnos' && (
+          <>
+            <PageHeader title="Gestión de Turnos" subtitle="Horarios disponibles para asignación." />
+            <div className="card" style={{maxWidth: '500px'}}>
+              <form onSubmit={(e) => enviarFormulario(e, 'turnos', nuevoTurno, setNuevoTurno, initialTurno, setTurnos)} style={{display: 'flex', gap: '15px', alignItems: 'flex-end'}}>
+                <Input label="Nombre del Turno" name="nombreTurno" value={nuevoTurno.nombre_turno} onChange={(e) => handleChange(e, setNuevoTurno, nuevoTurno)} required style={{flex: 1}}/>
+                <button type="submit" className="btn-primary">Crear</button>
+              </form>
+            </div>
+            <Table data={turnos} columns={['nombreTurno']} />
+          </>
+        )}
+
+        {vista === 'asignaciones' && (
+          <>
+            <PageHeader title="Carga Académica" subtitle="Vinculación de docentes, materias y horarios." />
             
-            <select name="maestro_id" value={nuevaAsignacion.maestro_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} required style={inputStyle}>
-              <option value="">-- Selecciona Maestro --</option>
-              {maestros.map(m => <option key={m.id} value={m.id}>{m.nombre} {m.apellido}</option>)}
-            </select>
+            <div className="card" style={{borderLeft: '4px solid var(--accent)'}}>
+              <h3 style={{marginTop:0}}>Nueva Asignación</h3>
+              <form onSubmit={(e) => enviarFormulario(e, 'asignaciones', nuevaAsignacion, setNuevaAsignacion, initialAsignacion, setAsignaciones)}>
+                <div className="form-grid">
+                  <Select label="Docente" name="maestro_id" value={nuevaAsignacion.maestro_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} options={maestros} labelKey={m => `${m.nombre} ${m.apellido}`} />
+                  <Select label="Materia" name="materia_id" value={nuevaAsignacion.materia_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} options={materias} labelKey="nombreMateria" />
+                  <Select label="Turno" name="turno_id" value={nuevaAsignacion.turno_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} options={turnos} labelKey="nombreTurno" />
+                </div>
+                <button type="submit" className="btn-primary">Asignar Carga</button>
+              </form>
+            </div>
 
-            <select name="materia_id" value={nuevaAsignacion.materia_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} required style={inputStyle}>
-              <option value="">-- Selecciona Materia --</option>
-              {materias.map(m => <option key={m.id} value={m.id}>{m.nombre_materia}</option>)}
-            </select>
+            <div className="card table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th><th>Docente</th><th>Materia Asignada</th><th>Turno</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {asignaciones.map(a => (
+                    <tr key={a.id}>
+                      <td>#{a.id}</td>
+                      <td style={{fontWeight: 500}}>{a.maestro ? `${a.maestro.nombre} ${a.maestro.apellido}` : '---'}</td>
+                      <td>
+                        <span style={{background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85em'}}>
+                          {a.materia ? a.materia.nombre_materia : '---'}
+                        </span>
+                      </td>
+                      <td>{a.turno ? a.turno.nombre_turno : '---'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
 
-            <select name="turno_id" value={nuevaAsignacion.turno_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} required style={inputStyle}>
-              <option value="">-- Selecciona Turno --</option>
-              {turnos.map(t => <option key={t.id} value={t.id}>{t.nombre_turno}</option>)}
-            </select>
-
-            <button type="submit" style={btnStyle}>Asignar</button>
-          </form>
-
-          {/* Tabla de asignaciones con nombres reales */}
-          <table border="1" cellPadding="10" style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left'}}>
-            <thead>
-              <tr style={{background:'#333', color: 'white'}}>
-                <th>ID</th><th>Maestro</th><th>Materia</th><th>Turno</th>
-              </tr>
-            </thead>
-            <tbody>
-              {asignaciones.map(a => (
-                <tr key={a.id}>
-                  <td>{a.id}</td>
-                  {/* Accedemos a los objetos anidados gracias al Join del backend */}
-                  <td>{a.maestro ? `${a.maestro.nombre} ${a.maestro.apellido}` : 'Sin datos'}</td>
-                  <td>{a.materia ? a.materia.nombre_materia : 'Sin datos'}</td>
-                  <td>{a.turno ? a.turno.nombre_turno : 'Sin datos'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      </main>
     </div>
   );
 }
 
-// Estilos simples para no repetir código
-const formStyle = { display: 'flex', gap: '10px', marginBottom: '20px', background: '#f4f4f4', padding: '15px', borderRadius: '8px', flexWrap: 'wrap' };
-const inputStyle = { padding: '8px', flex: 1 };
-const btnStyle = { background: '#28a745', color: 'white', padding: '10px', border: 'none', cursor: 'pointer' };
+// --- SUB-COMPONENTES AUXILIARES PARA LIMPIEZA VISUAL ---
 
-// Función auxiliar para renderizar tablas simples
-const renderTable = (data, columns) => (
-  <table border="1" cellPadding="10" style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left'}}>
-    <thead>
-      <tr style={{background:'#333', color: 'white'}}>
-        {columns.map(c => <th key={c} style={{textTransform: 'capitalize'}}>{c.replace('_', ' ')}</th>)}
-      </tr>
-    </thead>
-    <tbody>
-      {data.map(row => (
-        <tr key={row.id}>
-          {columns.map(col => <td key={col}>{row[col]}</td>)}
-        </tr>
+const NavButton = ({ active, onClick, icon, label }) => (
+  <button className={`nav-btn ${active ? 'active' : ''}`} onClick={onClick}>
+    {icon}
+    <span>{label}</span>
+  </button>
+);
+
+const Input = ({ label, ...props }) => (
+  <div className="input-group" style={props.style}>
+    <label>{label}</label>
+    <input {...props} />
+  </div>
+);
+
+const Select = ({ label, options, labelKey, ...props }) => (
+  <div className="input-group">
+    <label>{label}</label>
+    <select {...props}>
+      <option value="">-- Seleccionar --</option>
+      {options.map(opt => (
+        <option key={opt.id} value={opt.id}>
+          {typeof labelKey === 'function' ? labelKey(opt) : opt[labelKey]}
+        </option>
       ))}
-    </tbody>
-  </table>
+    </select>
+  </div>
 );
 
 export default App;
