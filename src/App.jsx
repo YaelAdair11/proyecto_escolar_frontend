@@ -1,8 +1,52 @@
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, Users, GraduationCap, Clock, BookOpen, School } from 'lucide-react'; // Si no instalaste lucide, borra esta línea y los iconos
+import { LayoutDashboard, Users, GraduationCap, Clock, BookOpen, School, LogOut, Lock } from 'lucide-react'; 
 import './App.css';
 
+const Login = ({ onLogin }) => {
+  const [creds, setCreds] = useState({ email: '', password: '' });
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    fetch('http://localhost:8080/api/login', { 
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(creds)
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Credenciales inválidas');
+      return res.json();
+    })
+    .then(data => {
+      onLogin(data.usuario); 
+    })
+    .catch(() => setError('Correo o contraseña incorrectos'));
+  };
+
+  return (
+    <div className="login-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f1f5f9' }}>
+      <div className="card" style={{ width: '400px', padding: '40px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+          <School size={48} color="#2563eb" />
+          <h2 style={{ color: '#1e293b' }}>Bienvenido al Portal</h2>
+          <p style={{ color: '#64748b' }}>Ingresa tus credenciales para continuar</p>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <Input label="Correo Electrónico" type="email" value={creds.email} onChange={e => setCreds({...creds, email: e.target.value})} required />
+          <Input label="Contraseña" type="password" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} required style={{marginTop: '15px'}} />
+          {error && <p style={{ color: 'red', marginTop: '10px', fontSize: '0.9em' }}>{error}</p>}
+          <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '20px' }}>
+            <Lock size={16} style={{ marginRight: '8px' }}/> Iniciar Sesión
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// --- APLICACIÓN PRINCIPAL ---
 function App() {
+  const [usuario, setUsuario] = useState(null);
   const [vista, setVista] = useState('alumnos');
   
   // --- ESTADOS DE DATOS ---
@@ -16,7 +60,7 @@ function App() {
   const initialAlumno = { matricula: '', nombre: '', apellido: '', fecha_nacimiento: '', direccion: '' };
   const initialMateria = { nombre_materia: '', clave_materia: '', descripcion: '' };
   const initialTurno = { nombre_turno: '' };
-  const initialMaestro = { nombre: '', apellido: '', email: '', telefono: '' };
+  const initialMaestro = { nombre: '', apellido: '', email: '', telefono: '', password: '' };
   const initialAsignacion = { maestro_id: '', materia_id: '', turno_id: '' };
 
   const [nuevoAlumno, setNuevoAlumno] = useState(initialAlumno);
@@ -27,18 +71,24 @@ function App() {
 
   // --- CARGA INICIAL ---
   useEffect(() => {
-    // Precargamos los catálogos necesarios para los selects
-    cargarData('materias', setMaterias);
-    cargarData('turnos', setTurnos);
-    cargarData('maestros', setMaestros);
-  }, []);
+    if (usuario) {
+      // Precargamos los catálogos necesarios para los selects
+      cargarData('materias', setMaterias);
+      cargarData('turnos', setTurnos);
+      cargarData('maestros', setMaestros);
+
+      if(usuario.rol === 'docente') setVista('asignaciones');
+    }
+  }, [usuario]);
 
   useEffect(() => {
+    if (!usuario) return;
     if (vista === 'alumnos') cargarData('alumnos', setAlumnos);
     if (vista === 'asignaciones') cargarData('asignaciones', setAsignaciones);
-  }, [vista]);
+  }, [vista, usuario]);
 
   const cargarData = (entidad, setter) => {
+    // CORREGIDO: Puerto cambiado de 8080 a 3000
     fetch(`http://localhost:8080/api/${entidad}`)
       .then(res => res.json())
       .then(data => setter(data))
@@ -51,14 +101,19 @@ function App() {
 
   const enviarFormulario = (e, entidad, data, setterClean, estadoClean, refreshSetter) => {
     e.preventDefault();
+    // CORREGIDO: Puerto cambiado de 8080 a 3000
     fetch(`http://localhost:8080/api/${entidad}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
     }).then(() => {
-      // Opcional: Usar un toast/notificación más elegante en lugar de alert
       alert('Registro guardado correctamente'); 
       setterClean(estadoClean);
       cargarData(entidad, refreshSetter);
     });
+  };
+
+  const cerrarSesion = () => {
+    setUsuario(null);
+    setVista('alumnos');
   };
 
   // --- COMPONENTES UI REUTILIZABLES ---
@@ -97,6 +152,12 @@ function App() {
 
   // --- RENDERIZADO PRINCIPAL ---
 
+  // 1. Si no hay usuario, mostramos LOGIN
+  if (!usuario) {
+    return <Login onLogin={(datosUsuario) => setUsuario(datosUsuario)} />;
+  }
+
+  // 2. Si hay usuario, mostramos DASHBOARD
   return (
     <div className="dashboard-layout">
       
@@ -106,21 +167,37 @@ function App() {
           <School size={28} /> {/* Icono */}
           <span>EduPortal</span>
         </div>
-        
+
+        <div style={{ padding: '0 20px', marginBottom: '20px', fontSize: '0.8em', color: '#94a3b8' }}>
+            Hola, {usuario.nombre} <br/>
+            <span style={{color: 'var(--accent)', textTransform: 'uppercase'}}>{usuario.rol}</span>
+        </div>
+
         <nav className="nav-menu">
-          <NavButton active={vista === 'alumnos'} onClick={() => setVista('alumnos')} icon={<Users size={20}/>} label="Alumnos" />
-          <NavButton active={vista === 'maestros'} onClick={() => setVista('maestros')} icon={<GraduationCap size={20}/>} label="Docentes" />
-          <NavButton active={vista === 'materias'} onClick={() => setVista('materias')} icon={<BookOpen size={20}/>} label="Materias" />
-          <NavButton active={vista === 'turnos'} onClick={() => setVista('turnos')} icon={<Clock size={20}/>} label="Turnos" />
-          <div style={{height: '1px', background: 'rgba(255,255,255,0.1)', margin: '10px 0'}}></div>
+          {/* Carga Académica visible para todos */}
           <NavButton active={vista === 'asignaciones'} onClick={() => setVista('asignaciones')} icon={<LayoutDashboard size={20}/>} label="Carga Académica" />
+          
+          {/* Solo mostramos gestión si es ADMIN */}
+          {usuario.rol === 'admin' && (
+            <>
+                <NavButton active={vista === 'alumnos'} onClick={() => setVista('alumnos')} icon={<Users size={20}/>} label="Alumnos" />
+                <NavButton active={vista === 'maestros'} onClick={() => setVista('maestros')} icon={<GraduationCap size={20}/>} label="Docentes" />
+                <NavButton active={vista === 'materias'} onClick={() => setVista('materias')} icon={<BookOpen size={20}/>} label="Materias" />
+                <NavButton active={vista === 'turnos'} onClick={() => setVista('turnos')} icon={<Clock size={20}/>} label="Turnos" />
+            </>
+          )}
+          
+          <div style={{height: '1px', background: 'rgba(255,255,255,0.1)', margin: '10px 0'}}></div>
+          <button className="nav-btn" onClick={cerrarSesion} style={{color: '#f87171'}}>
+            <LogOut size={20}/> <span>Cerrar Sesión</span>
+          </button>
         </nav>
       </aside>
 
       {/* ÁREA DE CONTENIDO */}
       <main className="main-content">
         
-        {vista === 'alumnos' && (
+        {vista === 'alumnos' && usuario.rol === 'admin' && (
           <>
             <PageHeader title="Directorio de Alumnos" subtitle="Gestiona la información y matrícula de los estudiantes." />
             <div className="card">
@@ -140,7 +217,7 @@ function App() {
           </>
         )}
 
-        {vista === 'maestros' && (
+        {vista === 'maestros' && usuario.rol === 'admin' && (
           <>
             <PageHeader title="Plantilla Docente" subtitle="Administración de profesores y datos de contacto." />
             <div className="card">
@@ -151,6 +228,7 @@ function App() {
                   <Input label="Apellido" name="apellido" value={nuevoMaestro.apellido} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} required />
                   <Input label="Email Institucional" type="email" name="email" value={nuevoMaestro.email} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} />
                   <Input label="Teléfono" name="telefono" value={nuevoMaestro.telefono} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} />
+                  <Input label="Contraseña" name="password" type="password" value={nuevoMaestro.password} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} required placeholder="Para su login" />
                 </div>
                 <button type="submit" className="btn-primary">Guardar Docente</button>
               </form>
@@ -159,7 +237,7 @@ function App() {
           </>
         )}
 
-        {vista === 'materias' && (
+        {vista === 'materias' && usuario.rol === 'admin' && (
           <>
             <PageHeader title="Catálogo de Materias" subtitle="Configuración de asignaturas disponibles." />
             <div className="card">
@@ -173,7 +251,7 @@ function App() {
           </>
         )}
 
-        {vista === 'turnos' && (
+        {vista === 'turnos' && usuario.rol === 'admin' && (
           <>
             <PageHeader title="Gestión de Turnos" subtitle="Horarios disponibles para asignación." />
             <div className="card" style={{maxWidth: '500px'}}>
@@ -190,6 +268,7 @@ function App() {
           <>
             <PageHeader title="Carga Académica" subtitle="Vinculación de docentes, materias y horarios." />
             
+            {usuario.rol === 'admin' && (
             <div className="card" style={{borderLeft: '4px solid var(--accent)'}}>
               <h3 style={{marginTop:0}}>Nueva Asignación</h3>
               <form onSubmit={(e) => enviarFormulario(e, 'asignaciones', nuevaAsignacion, setNuevaAsignacion, initialAsignacion, setAsignaciones)}>
@@ -201,6 +280,7 @@ function App() {
                 <button type="submit" className="btn-primary">Asignar Carga</button>
               </form>
             </div>
+            )}
 
             <div className="card table-container">
               <table>
@@ -245,14 +325,14 @@ const NavButton = ({ active, onClick, icon, label }) => (
 const Input = ({ label, ...props }) => (
   <div className="input-group" style={props.style}>
     <label>{label}</label>
-    <input {...props} />
+    <input {...props} className="input-field"/>
   </div>
 );
 
 const Select = ({ label, options, labelKey, ...props }) => (
   <div className="input-group">
     <label>{label}</label>
-    <select {...props}>
+    <select {...props} className="input-field">
       <option value="">-- Seleccionar --</option>
       {options.map(opt => (
         <option key={opt.id} value={opt.id}>
