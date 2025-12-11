@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, Users, GraduationCap, Clock, BookOpen, School, LogOut, Lock } from 'lucide-react'; 
+import { LayoutDashboard, Users, GraduationCap, Clock, BookOpen, School, LogOut, Lock, ArrowLeft, Save, Megaphone, Library, ClipboardCheck } from 'lucide-react'; 
 import './App.css';
 
 const Login = ({ onLogin }) => {
@@ -48,6 +48,23 @@ const Login = ({ onLogin }) => {
 function App() {
   const [usuario, setUsuario] = useState(null);
   const [vista, setVista] = useState('alumnos');
+  const [teacherVista, setTeacherVista] = useState('misCursos'); // Opciones: 'misCursos', 'verAlumnos', 'gestorAnuncios', 'bibliotecaRecursos', 'controlAsistencia'
+  const [selectedAsignacion, setSelectedAsignacion] = useState(null);
+  const [alumnosCurso, setAlumnosCurso] = useState([]);
+
+  // Estados para Gestor de Anuncios
+  const [announcements, setAnnouncements] = useState([]);
+  const [newAnnouncement, setNewAnnouncement] = useState({ title: '', message: '', targetCourseId: 'all' }); // 'all' o un ID de curso
+
+  // Estados para Biblioteca de Recursos
+  const [resources, setResources] = useState([]);
+  const [newResource, setNewResource] = useState({ title: '', url: '', file: null, courseId: '' });
+
+  // Estados para Control de Asistencia
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [selectedAttendanceCourseId, setSelectedAttendanceCourseId] = useState('');
+  const [selectedAttendanceDate, setSelectedAttendanceDate] = useState('');
+  const [studentsForAttendance, setStudentsForAttendance] = useState([]); // Estudiantes para el curso/fecha seleccionados
   
   // --- ESTADOS DE DATOS ---
   const [alumnos, setAlumnos] = useState([]);
@@ -72,28 +89,67 @@ function App() {
   // --- CARGA INICIAL ---
   useEffect(() => {
     if (usuario) {
-      // Precargamos los catálogos necesarios para los selects
       cargarData('materias', setMaterias);
       cargarData('turnos', setTurnos);
       cargarData('maestros', setMaestros);
+      cargarData('asignaciones', setAsignaciones); 
 
-      if(usuario.rol === 'docente') setVista('asignaciones');
+      if(usuario.rol === 'docente') {
+        setVista('dashboardDocente');
+      } else {
+        setVista('alumnos');
+      }
     }
   }, [usuario]);
 
   useEffect(() => {
     if (!usuario) return;
     if (vista === 'alumnos') cargarData('alumnos', setAlumnos);
-    if (vista === 'asignaciones') cargarData('asignaciones', setAsignaciones);
   }, [vista, usuario]);
 
   const cargarData = (entidad, setter) => {
-    // CORREGIDO: Puerto cambiado de 8080 a 3000
     fetch(`http://localhost:8080/api/${entidad}`)
       .then(res => res.json())
       .then(data => setter(data))
       .catch(err => console.error(err));
   };
+  
+  // --- FUNCIONALIDAD DOCENTE ---
+  const handleVerAlumnos = (asignacion) => {
+    setSelectedAsignacion(asignacion);
+    // Este endpoint ahora debe devolver los alumnos CON su calificación.
+
+    fetch(`http://localhost:8080/api/asignaciones/${asignacion.id}/alumnos`)
+      .then(res => res.json())
+      .then(data => {
+        // Asegurarnos que la calificación no sea null para el input
+        const alumnosConCalificacion = data.map(a => ({ ...a, calificacion: a.calificacion ?? '' }));
+        setAlumnosCurso(alumnosConCalificacion);
+        setTeacherVista('verAlumnos');
+      })
+      .catch(err => console.error("Error al cargar alumnos del curso:", err));
+  };
+
+  const handleCalificacionChange = (alumnoId, nuevaCalificacion) => {
+    const nuevosAlumnos = alumnosCurso.map(alumno => 
+      alumno.id === alumnoId ? { ...alumno, calificacion: nuevaCalificacion } : alumno
+    );
+    setAlumnosCurso(nuevosAlumnos);
+  };
+
+  const handleGuardarCalificacion = (alumnoId, asignacionId, calificacion) => {
+    fetch('http://localhost:8080/api/calificaciones', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alumnoId, asignacionId, calificacion: parseFloat(calificacion) })
+    })
+    .then(res => {
+      if(!res.ok) throw new Error("Error al guardar calificación");
+      alert(`Calificación para el alumno ${alumnoId} guardada exitosamente.`);
+    })
+    .catch(err => alert(err.message));
+  };
+
 
   const handleChange = (e, setter, estado) => {
     setter({ ...estado, [e.target.name]: e.target.value });
@@ -101,7 +157,6 @@ function App() {
 
   const enviarFormulario = (e, entidad, data, setterClean, estadoClean, refreshSetter) => {
     e.preventDefault();
-    // CORREGIDO: Puerto cambiado de 8080 a 3000
     fetch(`http://localhost:8080/api/${entidad}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
     }).then(() => {
@@ -114,6 +169,7 @@ function App() {
   const cerrarSesion = () => {
     setUsuario(null);
     setVista('alumnos');
+    setTeacherVista('misCursos'); // Resetear vista de docente
   };
 
   // --- COMPONENTES UI REUTILIZABLES ---
@@ -124,47 +180,139 @@ function App() {
       <p className="header-subtitle">{subtitle}</p>
     </div>
   );
-
-  const Table = ({ data, columns }) => (
-    <div className="card table-container">
-      <table>
-        <thead>
-          <tr>
-            {columns.map(c => <th key={c}>{c.replace('_', ' ')}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {data.length > 0 ? data.map(row => (
-            <tr key={row.id}>
-              {columns.map(col => <td key={col}>{row[col]}</td>)}
-            </tr>
-          )) : (
+  
+  // VISTA DE ALUMNOS POR CURSO 
+  const AlumnosCursoVista = ({ asignacion, alumnos }) => (
+    <>
+      <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
+        <button onClick={() => setTeacherVista('misCursos')} className="btn-secondary" style={{padding: '10px'}}>
+          <ArrowLeft size={20} />
+        </button>
+        <PageHeader 
+          title={`Calificaciones de ${asignacion.materia.nombreMateria}`}
+          subtitle={`Gestiona las notas de los estudiantes para el turno ${asignacion.turno.nombreTurno}.`} 
+        />
+      </div>
+      <div className="card table-container">
+        <table>
+          <thead>
             <tr>
-              <td colSpan={columns.length} style={{textAlign: 'center', padding: '30px', color: '#94a3b8'}}>
-                No hay registros disponibles.
-              </td>
+              <th>Matrícula</th>
+              <th>Nombre</th>
+              <th>Apellido</th>
+              <th style={{width: '120px'}}>Calificación</th>
+              <th style={{width: '120px'}}>Acción</th>
             </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {alumnos.length > 0 ? alumnos.map(alumno => (
+              <tr key={alumno.id}>
+                <td>{alumno.matricula}</td>
+                <td>{alumno.nombre}</td>
+                <td>{alumno.apellido}</td>
+                <td>
+                  <Input 
+                    type="number" 
+                    step="0.1" 
+                    min="0" 
+                    max="10" 
+                    value={alumno.calificacion} 
+                    onChange={(e) => handleCalificacionChange(alumno.id, e.target.value)}
+                    style={{ margin: 0, padding: '8px' }}
+                  />
+                </td>
+                <td>
+                  <button 
+                    className="btn-primary" 
+                    onClick={() => handleGuardarCalificacion(alumno.id, asignacion.id, alumno.calificacion)}
+                    style={{padding: '8px 12px'}}
+                  >
+                    <Save size={16} />
+                  </button>
+                </td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan="5" style={{textAlign: 'center', padding: '30px', color: '#94a3b8'}}>
+                  No hay alumnos inscritos en este curso.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
+
+  const TeacherDashboard = ({ usuario, asignaciones }) => {
+    const misAsignaciones = asignaciones.filter(a => a.maestro && a.maestro.id == usuario.id);
+    
+    return (
+      <>
+        {teacherVista === 'misCursos' && (
+          <>
+            <PageHeader title="Mis Cursos Asignados" subtitle={`Hola ${usuario.nombre}, aquí puedes gestionar tus cursos.`} />
+            
+            {misAsignaciones.length > 0 ? (
+              <div className="course-grid">
+                {misAsignaciones.map(asignacion => (
+                  <div key={asignacion.id} className="card course-card">
+                    <div className="course-card-header">
+                      <BookOpen size={20} />
+                      <h3>{asignacion.materia ? asignacion.materia.nombreMateria : 'Materia no definida'}</h3>
+                    </div>
+                    <div className="course-card-body">
+                      <p><strong>Turno:</strong> {asignacion.turno ? asignacion.turno.nombreTurno : 'No definido'}</p>
+                      <p><strong>Clave:</strong> {asignacion.materia ? asignacion.materia.claveMateria : 'N/A'}</p>
+                    </div>
+                    <div className="course-card-footer">
+                      <button className="btn-primary" onClick={() => handleVerAlumnos(asignacion)}>
+                        <Users size={16} style={{marginRight: '8px'}}/>
+                        Gestionar Curso
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="card" style={{textAlign: 'center', padding: '40px'}}>
+                <p>No tienes cursos asignados en este momento.</p>
+              </div>
+            )}
+          </>
+        )}
+        
+        {teacherVista === 'verAlumnos' && selectedAsignacion && (
+          <AlumnosCursoVista asignacion={selectedAsignacion} alumnos={alumnosCurso} />
+        )}
+
+        {teacherVista === 'gestorAnuncios' && (
+          <PageHeader title="Gestor de Anuncios" subtitle="Crea, edita y envía anuncios a tus cursos." />
+        )}
+        {teacherVista === 'bibliotecaRecursos' && (
+          <PageHeader title="Biblioteca de Recursos" subtitle="Sube y organiza material de estudio para tus materias." />
+        )}
+        {teacherVista === 'controlAsistencia' && (
+          <PageHeader title="Control de Asistencia" subtitle="Pasa lista de forma digital y consulta reportes." />
+        )}
+      </>
+    );
+  };
+
 
   // --- RENDERIZADO PRINCIPAL ---
 
-  // 1. Si no hay usuario, mostramos LOGIN
   if (!usuario) {
     return <Login onLogin={(datosUsuario) => setUsuario(datosUsuario)} />;
   }
 
-  // 2. Si hay usuario, mostramos DASHBOARD
   return (
     <div className="dashboard-layout">
       
       {/* SIDEBAR DE NAVEGACIÓN */}
       <aside className="sidebar">
         <div className="brand">
-          <School size={28} /> {/* Icono */}
+          <School size={28} />
           <span>EduPortal</span>
         </div>
 
@@ -174,16 +322,20 @@ function App() {
         </div>
 
         <nav className="nav-menu">
-          {/* Carga Académica visible para todos */}
-          <NavButton active={vista === 'asignaciones'} onClick={() => setVista('asignaciones')} icon={<LayoutDashboard size={20}/>} label="Carga Académica" />
-          
-          {/* Solo mostramos gestión si es ADMIN */}
-          {usuario.rol === 'admin' && (
+          {usuario.rol === 'admin' ? (
             <>
-                <NavButton active={vista === 'alumnos'} onClick={() => setVista('alumnos')} icon={<Users size={20}/>} label="Alumnos" />
-                <NavButton active={vista === 'maestros'} onClick={() => setVista('maestros')} icon={<GraduationCap size={20}/>} label="Docentes" />
-                <NavButton active={vista === 'materias'} onClick={() => setVista('materias')} icon={<BookOpen size={20}/>} label="Materias" />
-                <NavButton active={vista === 'turnos'} onClick={() => setVista('turnos')} icon={<Clock size={20}/>} label="Turnos" />
+              <NavButton active={vista === 'asignaciones'} onClick={() => setVista('asignaciones')} icon={<LayoutDashboard size={20}/>} label="Carga Académica" />
+              <NavButton active={vista === 'alumnos'} onClick={() => setVista('alumnos')} icon={<Users size={20}/>} label="Alumnos" />
+              <NavButton active={vista === 'maestros'} onClick={() => setVista('maestros')} icon={<GraduationCap size={20}/>} label="Docentes" />
+              <NavButton active={vista === 'materias'} onClick={() => setVista('materias')} icon={<BookOpen size={20}/>} label="Materias" />
+              <NavButton active={vista === 'turnos'} onClick={() => setVista('turnos')} icon={<Clock size={20}/>} label="Turnos" />
+            </>
+          ) : (
+            <>
+              <NavButton active={teacherVista === 'misCursos'} onClick={() => setTeacherVista('misCursos')} icon={<LayoutDashboard size={20}/>} label="Mis Cursos" />
+              <NavButton active={teacherVista === 'gestorAnuncios'} onClick={() => setTeacherVista('gestorAnuncios')} icon={<Megaphone size={20}/>} label="Gestor de Anuncios" />
+              <NavButton active={teacherVista === 'bibliotecaRecursos'} onClick={() => setTeacherVista('bibliotecaRecursos')} icon={<Library size={20}/>} label="Biblioteca de Recursos" />
+              <NavButton active={teacherVista === 'controlAsistencia'} onClick={() => setTeacherVista('controlAsistencia')} icon={<ClipboardCheck size={20}/>} label="Control de Asistencia" />
             </>
           )}
           
@@ -196,6 +348,10 @@ function App() {
 
       {/* ÁREA DE CONTENIDO */}
       <main className="main-content">
+        
+        {vista === 'dashboardDocente' && usuario.rol === 'docente' && (
+          <TeacherDashboard usuario={usuario} asignaciones={asignaciones} />
+        )}
         
         {vista === 'alumnos' && usuario.rol === 'admin' && (
           <>
@@ -213,7 +369,7 @@ function App() {
                 <button type="submit" className="btn-primary">Registrar Alumno</button>
               </form>
             </div>
-            <Table data={alumnos} columns={['matricula', 'nombre', 'apellido', 'direccion']} />
+            {/* El componente Table genérico ya no se usa para admin en esta vista */}
           </>
         )}
 
@@ -233,7 +389,7 @@ function App() {
                 <button type="submit" className="btn-primary">Guardar Docente</button>
               </form>
             </div>
-            <Table data={maestros} columns={['nombre', 'apellido', 'email', 'telefono']} />
+            {/* El componente Table genérico ya no se usa para admin en esta vista */}
           </>
         )}
 
@@ -247,7 +403,7 @@ function App() {
                 <button type="submit" className="btn-primary" style={{marginBottom: '2px'}}>Agregar</button>
               </form>
             </div>
-            <Table data={materias} columns={['claveMateria', 'nombreMateria']} />
+             {/* El componente Table genérico ya no se usa para admin en esta vista */}
           </>
         )}
 
@@ -260,15 +416,14 @@ function App() {
                 <button type="submit" className="btn-primary">Crear</button>
               </form>
             </div>
-            <Table data={turnos} columns={['nombreTurno']} />
+             {/* El componente Table genérico ya no se usa para admin en esta vista */}
           </>
         )}
 
-        {vista === 'asignaciones' && (
+        {vista === 'asignaciones' && usuario.rol === 'admin' && (
           <>
             <PageHeader title="Carga Académica" subtitle="Vinculación de docentes, materias y horarios." />
             
-            {usuario.rol === 'admin' && (
             <div className="card" style={{borderLeft: '4px solid var(--accent)'}}>
               <h3 style={{marginTop:0}}>Nueva Asignación</h3>
               <form onSubmit={(e) => enviarFormulario(e, 'asignaciones', nuevaAsignacion, setNuevaAsignacion, initialAsignacion, setAsignaciones)}>
@@ -280,7 +435,6 @@ function App() {
                 <button type="submit" className="btn-primary">Asignar Carga</button>
               </form>
             </div>
-            )}
 
             <div className="card table-container">
               <table>
@@ -324,7 +478,7 @@ const NavButton = ({ active, onClick, icon, label }) => (
 
 const Input = ({ label, ...props }) => (
   <div className="input-group" style={props.style}>
-    <label>{label}</label>
+    {label && <label>{label}</label>}
     <input {...props} className="input-field"/>
   </div>
 );
