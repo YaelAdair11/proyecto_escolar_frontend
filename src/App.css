@@ -591,3 +591,119 @@ tr:hover td {
   color: white;
   border-color: var(--primary);
 }
+
+
+/* Estilo base para los botones de íconos */
+.btn-icon {
+  padding: 6px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease; /* Suaviza el cambio de color */
+  display: inline-flex;      /* Centra el ícono perfectamente */
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Botón Editar (Gris/Azul) --- */
+.btn-edit {
+  background-color: #e2e8f0;
+  color: #334155;
+}
+
+/* Efecto Hover Editar */
+.btn-edit:hover {
+  background-color: #cbd5e1; /* Fondo más oscuro */
+  color: #0f172a;            /* Texto más oscuro */
+  transform: translateY(-1px); /* Pequeño efecto de elevación */
+}
+
+/* --- Botón Inscribe (Verde) --- */
+.btn-inscribe {
+  background-color: #b3e7bf;
+  color: #0f172a;
+}
+
+/* Efecto Hover Inscribe */
+.btn-inscribe:hover {
+  background-color: rgb(174, 218, 183); /* Verde más intenso */
+  color: #0f172a;            /* Texto más oscuro */
+  transform: translateY(-1px);
+}
+
+/* --- Botón Eliminar (Rojo) --- */
+.btn-delete {
+  background-color: #fee2e2;
+  color: #ef4444;
+}
+
+/* Efecto Hover Eliminar */
+.btn-delete:hover {
+  background-color: #fecaca; /* Fondo rojo más intenso */
+  color: #b91c1c;            /* Rojo oscuro */
+  transform: translateY(-1px);
+}
+
+/* --- Botón Cancelar Edición --- */
+.btn-cancel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background-color: #ec4343;
+  color: #ffffff; /* Gris suave */
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+/* Efecto Hover: Se pone rojo suave */
+.btn-cancel:hover {
+  background-color: #df1e2b; /* Fondo rosado muy pálido */
+  color: #ffffff;            /* Texto rojo */
+  border-color: #fecdd3;     /* Borde rojo suave */
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.btn-cancel2 {
+  transform: none !important;
+  transition: none !important;
+}
+
+.btn-back{
+  padding: 10px;
+  font-size: 0.8em;
+  font-weight: 500;
+  background-color: #e2e8f0;
+  color: #334155;
+  border: none;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  box-shadow: 0px 1px 2px rgba(0,0,0,0.2);
+}
+.btn-back:hover{
+  background-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.btn-imprimir{
+  padding: 10px;
+  font-size: 0.8em;
+  font-weight: 500;
+  background-color: #e2e8f0;
+  color: #334155;
+  border: none;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  box-shadow: 0px 1px 2px rgba(0,0,0,0.2);
+}
+.btn-imprimir:hover{
+  background-color: #cbd5e1;
+  color: #0f172a;
+}

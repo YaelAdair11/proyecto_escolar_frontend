@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, Users, GraduationCap, Clock, BookOpen, School, LogOut, Lock, ArrowLeft, Save, Megaphone, Library, ClipboardCheck, Trash2, UserPlus } from 'lucide-react'; 
+import { LayoutDashboard, Users, GraduationCap, Clock, BookOpen, School, LogOut, Lock, ArrowLeft, Save, Megaphone, Library, ClipboardCheck, Trash2, UserPlus, Pencil, X } from 'lucide-react'; 
 import './App.css';
 
 // Componente para el Inicio de Sesión
@@ -131,7 +131,7 @@ const InscripcionModal = ({ asignacion, onClose, allAlumnos }) => {
         )}
 
         <div style={{display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px'}}>
-          <button className="btn-secondary" onClick={onClose}>Cancelar</button>
+          <button className="btn-secondary btn-icon btn-cancel btn-cancel2" onClick={onClose}><X size={16}/> Cancelar</button>
           <button className="btn-primary" onClick={handleGuardar}>Guardar Cambios</button>
         </div>
       </div>
@@ -152,6 +152,7 @@ function App() {
 
   // Estado para el Modal de Inscripción (ADMIN)
   const [asignacionParaInscribir, setAsignacionParaInscribir] = useState(null);
+  const [editId, setEditId] = useState(null); // ID para edición
 
   // --- ESTADOS DE DATOS (Admin) ---
   // Aquí almacenamos las listas que vienen de la base de datos
@@ -196,6 +197,7 @@ function App() {
   useEffect(() => {
     if (!usuario) return;
     // Carga de datos según la vista del Admin
+    cancelarEdicion(); // Limpiar edición al cambiar de vista
     if (vista === 'alumnos') cargarData('alumnos', setAlumnos);
     if (vista === 'maestros') cargarData('maestros', setMaestros);
     if (vista === 'materias') cargarData('materias', setMaterias);
@@ -228,43 +230,74 @@ function App() {
       .catch(err => console.error("Error al cargar alumnos del curso:", err));
   };
 
-  const handleCalificacionChange = (alumnoId, nuevaCalificacion) => {
-    const nuevosAlumnos = alumnosCurso.map(alumno => 
-      alumno.id === alumnoId ? { ...alumno, calificacion: nuevaCalificacion } : alumno
-    );
-    setAlumnosCurso(nuevosAlumnos);
-  };
-
-  // Envía la calificación de un alumno al servidor
-  const handleGuardarCalificacion = (alumnoId, asignacionId, calificacion) => {
-    fetch('http://localhost:8080/api/calificaciones', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ alumnoId, asignacionId, calificacion: parseFloat(calificacion) })
-    })
-    .then(res => {
-      if(!res.ok) throw new Error("Error al guardar calificación");
-      alert(`Calificación para el alumno ${alumnoId} guardada exitosamente.`);
-    })
-    .catch(err => alert(err.message));
-  };
-
-
-  // Función para manejar lo que escribimos en los inputs
+  // --- LÓGICA ADMIN (CRUD) ---
+  
   const handleChange = (e, setter, estado) => {
     setter({ ...estado, [e.target.name]: e.target.value });
   };
 
-  // Función genérica para enviar cualquier formulario de registro
+  // Función unificada para POST (Crear) y PUT (Editar)
   const enviarFormulario = (e, entidad, data, setterClean, estadoClean, refreshSetter) => {
     e.preventDefault();
-    fetch(`http://localhost:8080/api/${entidad}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
-    }).then(() => {
-      alert('Registro guardado correctamente'); 
+    
+    const method = editId ? 'PUT' : 'POST';
+    const url = editId 
+      ? `http://localhost:8080/api/${entidad}/${editId}` 
+      : `http://localhost:8080/api/${entidad}`;
+
+    fetch(url, {
+      method: method, 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify(data)
+    })
+    .then(res => {
+        if (!res.ok) throw new Error('Error en la petición');
+        return res.json();
+    })
+    .then(() => {
+      alert(editId ? 'Registro actualizado correctamente' : 'Registro guardado correctamente');
       setterClean(estadoClean);
+      setEditId(null);
       cargarData(entidad, refreshSetter);
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Ocurrió un error. Verifica la consola.');
     });
+  };
+
+  // Función para Eliminar (DELETE)
+  const eliminarRegistro = (entidad, id, refreshSetter) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este registro?')) return;
+
+    fetch(`http://localhost:8080/api/${entidad}/${id}`, {
+      method: 'DELETE'
+    })
+    .then(res => {
+        if (res.ok) {
+            alert('Registro eliminado');
+            cargarData(entidad, refreshSetter);
+        } else {
+            alert('No se pudo eliminar el registro.');
+        }
+    })
+    .catch(err => console.error(err));
+  };
+
+  // Helpers de Edición
+  const cargarEdicion = (item, setter) => {
+    setEditId(item.id);
+    setter(item);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelarEdicion = () => {
+    setEditId(null);
+    setNuevoAlumno(initialAlumno);
+    setNuevaMateria(initialMateria);
+    setNuevoTurno(initialTurno);
+    setNuevoMaestro(initialMaestro);
+    setNuevaAsignacion(initialAsignacion);
   };
 
   const cerrarSesion = () => {
@@ -462,7 +495,7 @@ function App() {
 
         {/* --- INTERFAZ NORMAL DE PANTALLA --- */}
         <div className="no-print" style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
-          <button onClick={() => setTeacherVista('misCursos')} className="btn-secondary" style={{padding: '10px'}}>
+          <button onClick={() => setTeacherVista('misCursos')} className="btn-secondary btn-back" style={{padding: '10px'}}>
             <ArrowLeft size={20} />
           </button>
           <PageHeader 
@@ -474,7 +507,7 @@ function App() {
         <div className="card table-container" style={{border: 'none', boxShadow: 'none'}}> {/* Quitar bordes al imprimir */}
           
           <div className="no-print" style={{textAlign: 'right', marginBottom: '15px'}}>
-             <button onClick={() => window.print()} className="btn-secondary" style={{display:'inline-flex', alignItems:'center', gap:'8px'}}>
+             <button onClick={() => window.print()} className="btn-secondary btn-imprimir" style={{display:'inline-flex', alignItems:'center', gap:'8px'}}>
                 <Save size={16} /> Imprimir Acta Oficial
              </button>
           </div>
@@ -541,16 +574,22 @@ function App() {
 
   // VISTA DE RECURSOS (DOCENTE) 
   // Aquí el profe puede subir archivos PDF o Links para su clase
+  // VISTA DE RECURSOS (DOCENTE) - ACTUALIZADA
   const RecursosVista = ({ misAsignaciones }) => {
     const [selectedCourse, setSelectedCourse] = useState(misAsignaciones[0]?.id || '');
     const [recursos, setRecursos] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    
+    // Estado para edición
+    const [editId, setEditId] = useState(null);
+    
     const [form, setForm] = useState({ title: '', type: 'link', link: '', file: null, base64: '' });
 
-    // Cuando cambia el curso seleccionado, cargamos sus materiales
+    // Cargar recursos al cambiar el curso
     useEffect(() => {
       if (!selectedCourse) { setRecursos([]); return; };
       cargarRecursos();
+      cancelEdit(); // Limpiar formulario si cambias de curso
     }, [selectedCourse]);
 
     const cargarRecursos = () => {
@@ -560,23 +599,23 @@ function App() {
         .then(data => setRecursos(data))
         .catch(err => {
           console.error("Error:", err);
-          alert("Error de conexión: No se pudo cargar la biblioteca.");
+          // alert("Error de conexión al cargar recursos."); // Opcional
         })
         .finally(() => setIsLoading(false));
     };
 
-    // Si seleccionan un archivo, lo leemos y convertimos para enviarlo
+    // Manejo de archivo (Conversión a Base64)
     const handleFileChange = (e) => {
       const file = e.target.files[0];
       if (file) {
-        if (file.size > 2 * 1024 * 1024) {
-          alert('El archivo es demasiado grande (Máximo 2MB).');
+        if (file.size > 5 * 1024 * 1024) { // Aumenté a 5MB por si acaso
+          alert('El archivo es demasiado grande (Máximo 5MB).');
+          e.target.value = null; // Limpiar input
           return;
         }
         const reader = new FileReader();
         reader.onloadend = () => {
           setForm({ ...form, file: file, base64: reader.result });
-          alert('Archivo cargado correctamente. No olvides dar clic en Guardar.');
         };
         reader.readAsDataURL(file);
       }
@@ -586,89 +625,187 @@ function App() {
         try { return Boolean(new URL(urlString)); } catch(e){ return false; }
     }
 
-    // Validamos y guardamos el recurso nuevo en el servidor
+    // --- FUNCIÓN PARA CARGAR DATOS EN EL FORMULARIO (AL DAR EDITAR) ---
+    const handleEdit = (recurso) => {
+        setEditId(recurso.id);
+        setForm({
+            title: recurso.titulo,
+            type: recurso.tipo, // 'link' o 'file' detectado automáticamente
+            link: recurso.tipo === 'link' ? recurso.url : '',
+            file: null, // El input file no se puede prellenar por seguridad
+            base64: recurso.tipo === 'file' ? recurso.archivoBase64 : '' // Guardamos el base64 existente
+        });
+        // Scroll suave hacia arriba para ver el formulario
+        document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
+    };
+
+    const cancelEdit = () => {
+        setEditId(null);
+        setForm({ title: '', type: 'link', link: '', file: null, base64: '' });
+    };
+
+    // --- GUARDAR (CREAR O ACTUALIZAR) ---
     const handleSubmit = (e) => {
       e.preventDefault();
       
       if (!form.title.trim()) { alert('El campo "Título" es obligatorio.'); return; }
       
+      // Validaciones específicas según tipo
       if (form.type === 'link') {
         if (!form.link) { alert('Debes escribir una URL.'); return; }
-        if (!isValidUrl(form.link)) { alert('La URL no es válida. Asegúrate de incluir http:// o https://'); return; }
-      } else if (form.type === 'file' && !form.base64) {
-        alert('Por favor selecciona un archivo PDF o imagen.'); return;
+        if (!isValidUrl(form.link)) { alert('La URL no es válida (incluye http:// o https://)'); return; }
+      } else if (form.type === 'file') {
+        // Si no hay base64 (ni nuevo ni viejo), error.
+        if (!form.base64) { alert('Por favor selecciona un archivo.'); return; }
       }
 
       const payload = {
-        titulo: form.title, type: form.type,
+        titulo: form.title,
+        type: form.type,
         url: form.type === 'link' ? form.link : '',
         archivoBase64: form.type === 'file' ? form.base64 : '',
         asignacionId: selectedCourse
       };
 
-      fetch('http://localhost:8080/api/recursos', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      // Determinar URL y Método (POST o PUT)
+      const url = editId 
+        ? `http://localhost:8080/api/recursos/${editId}` 
+        : 'http://localhost:8080/api/recursos';
+      
+      const method = editId ? 'PUT' : 'POST';
+
+      fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       })
       .then(async res => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Error del servidor');
         return data;
       })
-      .then(nuevoRecurso => {
-        setRecursos([...recursos, nuevoRecurso]);
-        setForm({ title: '', type: 'link', link: '', file: null, base64: '' });
-        alert('¡Recurso guardado exitosamente!');
+      .then(recursoGuardado => {
+        if (editId) {
+            // Actualizar en la lista local
+            setRecursos(recursos.map(r => r.id === editId ? recursoGuardado : r));
+            alert('¡Recurso actualizado correctamente!');
+        } else {
+            // Agregar a la lista local
+            setRecursos([...recursos, recursoGuardado]);
+            alert('¡Recurso creado exitosamente!');
+        }
+        cancelEdit(); // Limpiar todo
       })
       .catch(err => alert("Error: " + err.message));
     };
 
-    // Borrar un recurso de la lista
+    // Borrar recurso
     const handleDelete = (id) => {
       if(!window.confirm("¿Confirma que desea eliminar este recurso permanentemente?")) return;
       fetch(`http://localhost:8080/api/recursos/${id}`, { method: 'DELETE' })
       .then(res => {
         if(res.ok) {
           setRecursos(recursos.filter(r => r.id !== id));
-          alert('El recurso ha sido eliminado.');
+          if (editId === id) cancelEdit(); // Si borras lo que editas, se cancela
         } else {
           alert('No se pudo eliminar el recurso.');
         }
       });
     };
 
+    // Función para obtener la extensión correcta desde el Base64
+    const getExtensionFromBase64 = (base64String) => {
+      if (!base64String) return '.bin';
+      
+      if (base64String.startsWith('data:application/pdf')) return '.pdf';
+      if (base64String.startsWith('data:image/png')) return '.png';
+      if (base64String.startsWith('data:image/jpeg')) return '.jpg';
+      if (base64String.startsWith('data:image/jpg')) return '.jpg';
+      if (base64String.startsWith('data:application/msword')) return '.doc';
+      if (base64String.startsWith('data:application/vnd.openxmlformats-officedocument.wordprocessingml.document')) return '.docx';
+      
+      return '.bin'; // Fallback por si acaso
+    };
+
     return (
       <>
         <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
-          <button onClick={() => setTeacherVista('misCursos')} className="btn-secondary" style={{padding: '10px'}}>
+          {/* <button onClick={() => setTeacherVista('misCursos')} className="btn-secondary" style={{padding: '10px'}}>
             <ArrowLeft size={20} />
-          </button>
+          </button> */}
           <PageHeader title="Biblioteca de Recursos" subtitle="Gestiona enlaces y documentos para tus alumnos." />
         </div>
-        <div className="card" style={{borderLeft: '4px solid var(--accent)'}}>
-          <h3 style={{marginTop:0}}>Agregar Nuevo Recurso</h3>
+
+        {/* --- FORMULARIO --- */}
+        <div className="card" style={{borderLeft: editId ? '4px solid #f59e0b' : '4px solid var(--accent)'}}>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
+             <h3 style={{margin:0}}>{editId ? 'Editar Recurso' : 'Agregar Nuevo Recurso'}</h3>
+             {editId && (
+                <button onClick={cancelEdit} className="btn-secondary btn-icon btn-cancel" style={{fontSize: '0.8rem', padding: '8px 10px'}}>
+                    <X size={14} style={{marginRight: 4}}/> Cancelar Edición
+                </button>
+             )}
+          </div>
+          
           <form onSubmit={handleSubmit}>
             <div className="form-grid">
-              <Select label="Curso Destino" value={selectedCourse} onChange={e => setSelectedCourse(e.target.value)} options={misAsignaciones} labelKey={a => a.materia.nombreMateria} style={{gridColumn: 'span 2'}} />
-              <Input label="Título del Material" value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="Ej: Guía de estudio..." required />
+              {/* Selección de curso (deshabilitado al editar para no moverlo de curso accidentalmente) */}
+              <Select 
+                label="Curso Destino" 
+                value={selectedCourse || ''}
+                onChange={e => setSelectedCourse(e.target.value)} 
+                options={misAsignaciones} 
+                labelKey={a => a.materia.nombreMateria} 
+                style={{gridColumn: 'span 2'}} 
+                disabled={!!editId} 
+              />
+              
+              <Input 
+                label="Título del Material" 
+                value={form.title || ''}
+                onChange={e => setForm({...form, title: e.target.value})} 
+                placeholder="Ej: Guía de estudio..." 
+                required 
+              />
+              
               <div className="input-group">
                 <label>Formato</label>
-                <select className="input-field" value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
+                <select className="input-field" value={form.type || ''} onChange={e => setForm({...form, type: e.target.value, link: '', base64: '', file: null})}>
                   <option value="link">Enlace Web (URL)</option>
                   <option value="file">Documento (PDF/Imagen)</option>
                 </select>
               </div>
+
               {form.type === 'link' ? (
-                <Input label="Dirección Web (URL)" value={form.link} onChange={e => setForm({...form, link: e.target.value})} placeholder="https://..." style={{gridColumn: 'span 2'}} />
+                <Input 
+                    label="Dirección Web (URL)" 
+                    value={form.link || ''} 
+                    onChange={e => setForm({...form, link: e.target.value})} 
+                    placeholder="https://..." 
+                    style={{gridColumn: 'span 2'}} 
+                />
               ) : (
                 <div className="input-group" style={{gridColumn: 'span 2'}}>
-                  <label>Seleccionar Archivo (Max 2MB)</label>
+                  <label>Seleccionar Archivo (Max 5MB)</label>
                   <input type="file" className="input-field" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" onChange={handleFileChange} />
+                  
+                  {/* Mensaje visual si ya existe un archivo cargado (modo edición) */}
+                  {editId && form.base64 && !form.file && (
+                      <div style={{fontSize: '0.85em', color: '#10b981', marginTop: '5px'}}>
+                          ✓ Archivo actual cargado. Sube uno nuevo solo si deseas reemplazarlo.
+                      </div>
+                  )}
                 </div>
               )}
             </div>
-            <button type="submit" className="btn-primary" style={{marginTop: '15px'}}><Save size={16} style={{marginRight:5}}/> Guardar en Biblioteca</button>
+            
+            <button type="submit" className="btn-primary" style={{marginTop: '15px'}}>
+                <Save size={16} style={{marginRight:5}}/> {editId ? 'Actualizar Recurso' : 'Guardar en Biblioteca'}
+            </button>
           </form>
         </div>
+
+        {/* --- TABLA --- */}
         <div className="card table-container" style={{marginTop: '30px'}}>
            <h3 style={{marginTop:0, marginBottom: '20px'}}>Material Disponible</h3>
           {isLoading ? <p style={{color:'#64748b'}}>Cargando biblioteca...</p> : (
@@ -677,17 +814,53 @@ function App() {
               <tbody>
                 {recursos.length > 0 ? recursos.map(res => (
                   <tr key={res.id}>
-                    <td><div style={{display:'flex', alignItems:'center', gap:'10px', fontWeight:'500'}}>{res.tipo === 'link' ? <BookOpen size={18} color="#2563eb"/> : <Library size={18} color="#ea580c"/>}{res.titulo}</div></td>
-                    <td><span className="badge" style={{background: res.tipo === 'link' ? '#e0f2fe' : '#ffedd5', color: res.tipo === 'link' ? '#0369a1' : '#c2410c'}}>{res.tipo === 'link' ? 'ENLACE' : 'ARCHIVO'}</span></td>
+                    <td>
+                        <div style={{display:'flex', alignItems:'center', gap:'10px', fontWeight:'500'}}>
+                            {res.tipo === 'link' ? <BookOpen size={18} color="#2563eb"/> : <Library size={18} color="#ea580c"/>}
+                            {res.titulo}
+                        </div>
+                    </td>
+                    <td>
+                        <span className="badge" style={{background: res.tipo === 'link' ? '#e0f2fe' : '#ffedd5', color: res.tipo === 'link' ? '#0369a1' : '#c2410c'}}>
+                            {res.tipo === 'link' ? 'ENLACE' : 'ARCHIVO'}
+                        </span>
+                    </td>
                     <td>{new Date(res.createdAt).toLocaleDateString()}</td>
                     <td style={{textAlign:'right'}}>
-                      <div style={{display:'flex', justifyContent:'flex-end', gap:'10px'}}>
+                      <div style={{display:'flex', justifyContent:'flex-end', gap:'8px'}}>
+                        
+                        {/* Botón Ver/Descargar */}
                         {res.tipo === 'link' ? (
-                          <a href={res.url} target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{padding:'6px 10px', textDecoration:'none', fontSize:'0.85em'}} onClick={(e) => { if (!res.url || !res.url.startsWith('http')) { e.preventDefault(); alert("La URL guardada parece defectuosa. Sugerimos eliminar este recurso."); }}}>Abrir</a>
+                          <a href={res.url} target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{padding:'6px 10px', textDecoration:'none', fontSize:'0.85em'}}>Abrir</a>
                         ) : (
-                          <a href={res.archivoBase64} download={`${res.titulo}.pdf`} className="btn-secondary" style={{padding:'6px 10px', textDecoration:'none', fontSize:'0.85em'}}>Descargar</a>
+                          <a 
+                            href={res.archivoBase64} 
+                            // AQUÍ ESTÁ EL CAMBIO: Usamos la función para determinar la extensión
+                            download={`${res.titulo}${getExtensionFromBase64(res.archivoBase64)}`} 
+                            className="btn-secondary" 
+                            style={{padding:'6px 10px', textDecoration:'none', fontSize:'0.85em'}}
+                          >
+                            Bajar
+                          </a>
                         )}
-                        <button onClick={() => handleDelete(res.id)} style={{background: '#fee2e2', color: '#ef4444', border:'none', borderRadius:'6px', padding:'6px', cursor:'pointer'}}><Trash2 size={16} /></button>
+
+                        {/* Botón Editar */}
+                        <button 
+                            onClick={() => handleEdit(res)} 
+                            style={{background: '#e2e8f0', color: '#334155', border:'none', borderRadius:'6px', padding:'6px', cursor:'pointer'}}
+                            title="Editar"
+                        >
+                            <Pencil size={16} />
+                        </button>
+
+                        {/* Botón Eliminar */}
+                        <button 
+                            onClick={() => handleDelete(res.id)} 
+                            style={{background: '#fee2e2', color: '#ef4444', border:'none', borderRadius:'6px', padding:'6px', cursor:'pointer'}}
+                            title="Eliminar"
+                        >
+                            <Trash2 size={16} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -804,9 +977,9 @@ function App() {
 
         {/* --- HEADER --- */}
         <div className="no-print" style={{display: 'flex', alignItems: 'center', gap: '15px', marginBottom:'20px'}}>
-          <button onClick={() => setTeacherVista('misCursos')} className="btn-secondary" style={{padding: '10px'}}>
+          {/* <button onClick={() => setTeacherVista('misCursos')} className="btn-secondary" style={{padding: '10px'}}>
             <ArrowLeft size={20} />
-          </button>
+          </button> */}
           <div>
              <h1 className="header-title">Control de Asistencia</h1>
              <p className="header-subtitle">Gestiona faltas y retardos.</p>
@@ -847,7 +1020,7 @@ function App() {
                     <div className="card table-container" style={{marginTop: '20px'}}>
                         <div className="no-print" style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}>
                             <h3 style={{margin:0}}>Lista del: {selectedDate}</h3>
-                            <button onClick={() => window.print()} className="btn-secondary" style={{fontSize:'0.8em'}}><Save size={14}/> Imprimir Día</button>
+                            <button onClick={() => window.print()} className="btn-secondary btn-imprimir" style={{fontSize:'0.8em'}}><Save size={14}/> Imprimir Día</button>
                         </div>
                         {/* Tabla diaria simple */}
                         <table>
@@ -1058,21 +1231,36 @@ function App() {
         {vista === 'alumnos' && usuario.rol === 'admin' && (
           <>
             <PageHeader title="Directorio de Alumnos" subtitle="Gestiona la información y matrícula de los estudiantes." />
-            <div className="card">
-              <h3 style={{marginTop:0, marginBottom: '20px'}}>Nuevo Estudiante</h3>
+            <div className="card" style={editId ? {borderLeft: '4px solid #f59e0b'} : {}}>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                <h3 style={{margin: 0}}>{editId ? 'Editar Estudiante' : 'Nuevo Estudiante'}</h3>
+                {editId && (
+                  <button 
+                    onClick={cancelarEdicion} 
+                    className="btn-cancel"
+                  >
+                    <X size={16}/> Cancelar
+                  </button>
+                )}
+              </div>
               <form onSubmit={(e) => enviarFormulario(e, 'alumnos', nuevoAlumno, setNuevoAlumno, initialAlumno, setAlumnos)}>
                 <div className="form-grid">
-                  <Input label="Matrícula" name="matricula" value={nuevoAlumno.matricula} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
-                  <Input label="Nombre" name="nombre" value={nuevoAlumno.nombre} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
-                  <Input label="Apellido" name="apellido" value={nuevoAlumno.apellido} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
-                  <Input label="Dirección" name="direccion" value={nuevoAlumno.direccion} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} />
-                  <Input label="Fecha Nacimiento" type="date" name="fechaNacimiento" value={nuevoAlumno.fecha_nacimiento} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} />
+                  <Input label="Matrícula" name="matricula" value={nuevoAlumno.matricula || ''} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
+                  <Input label="Nombre" name="nombre" value={nuevoAlumno.nombre || ''} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
+                  <Input label="Apellido" name="apellido" value={nuevoAlumno.apellido || ''} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} required />
+                  <Input label="Dirección" name="direccion" value={nuevoAlumno.direccion || ''} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} />
+                  <Input label="Fecha Nacimiento" type="date" name="fechaNacimiento" value={nuevoAlumno.fechaNacimiento || ''} onChange={(e) => handleChange(e, setNuevoAlumno, nuevoAlumno)} />
                 </div>
-                <button type="submit" className="btn-primary">Registrar Alumno</button>
+                <button type="submit" className="btn-primary">{editId ? 'Actualizar' : 'Registrar'}</button>
               </form>
             </div>
             {/* TABLA ALUMNOS */}
-            <Table data={alumnos} columns={['matricula', 'nombre', 'apellido', 'direccion']} />
+            <Table 
+                data={alumnos} 
+                columns={['matricula', 'nombre', 'apellido', 'direccion']} 
+                onEdit={(item) => cargarEdicion(item, setNuevoAlumno)}
+                onDelete={(id) => eliminarRegistro('alumnos', id, setAlumnos)}
+            />
           </>
         )}
 
@@ -1080,20 +1268,35 @@ function App() {
         {vista === 'maestros' && usuario.rol === 'admin' && (
           <>
             <PageHeader title="Plantilla Docente" subtitle="Administración de profesores." />
-            <div className="card">
-              <h3 style={{marginTop:0, marginBottom: '20px'}}>Registrar Docente</h3>
+            <div className="card" style={editId ? {borderLeft: '4px solid #f59e0b'} : {}}>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                <h3 style={{margin: 0}}>{editId ? 'Editar Docente' : 'Registrar Docente'}</h3>
+                {editId && (
+                  <button 
+                    onClick={cancelarEdicion} 
+                    className="btn-cancel"
+                  >
+                    <X size={16}/> Cancelar
+                  </button>
+                )}
+              </div>
               <form onSubmit={(e) => enviarFormulario(e, 'maestros', nuevoMaestro, setNuevoMaestro, initialMaestro, setMaestros)}>
                 <div className="form-grid">
-                  <Input label="Nombre" name="nombre" value={nuevoMaestro.nombre} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} required />
-                  <Input label="Apellido" name="apellido" value={nuevoMaestro.apellido} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} required />
-                  <Input label="Email Institucional" type="email" name="email" value={nuevoMaestro.email} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} />
-                  <Input label="Teléfono" name="telefono" value={nuevoMaestro.telefono} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} />
-                  <Input label="Contraseña" name="password" type="password" value={nuevoMaestro.password} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} required placeholder="Para su login" />
+                  <Input label="Nombre" name="nombre" value={nuevoMaestro.nombre || ''} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} required />
+                  <Input label="Apellido" name="apellido" value={nuevoMaestro.apellido || ''} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} required />
+                  <Input label="Email Institucional" type="email" name="email" value={nuevoMaestro.email || ''} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} />
+                  <Input label="Teléfono" name="telefono" value={nuevoMaestro.telefono || ''} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} />
+                  <Input label="Contraseña" name="password" type="password" value={nuevoMaestro.password || ''} onChange={(e) => handleChange(e, setNuevoMaestro, nuevoMaestro)} required placeholder="Para su login" />
                 </div>
-                <button type="submit" className="btn-primary">Guardar Docente</button>
+                <button type="submit" className="btn-primary">{editId ? 'Actualizar' : 'Guardar'}</button>
               </form>
             </div>
-            <Table data={maestros} columns={['nombre', 'apellido', 'email', 'telefono']} />
+            <Table 
+                data={maestros} 
+                columns={['nombre', 'apellido', 'email', 'telefono']} 
+                onEdit={(item) => cargarEdicion(item, setNuevoMaestro)}
+                onDelete={(id) => eliminarRegistro('maestros', id, setMaestros)}
+            />
           </>
         )}
 
@@ -1101,14 +1304,30 @@ function App() {
         {vista === 'materias' && usuario.rol === 'admin' && (
           <>
             <PageHeader title="Catálogo de Materias" subtitle="Configuración de asignaturas." />
-            <div className="card">
+            <div className="card" style={editId ? {borderLeft: '4px solid #f59e0b'} : {}}>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                <h3 style={{margin: 0}}>{editId ? 'Editar Materia' : 'Nueva Materia'}</h3>
+                {editId && (
+                  <button 
+                    onClick={cancelarEdicion} 
+                    className="btn-cancel"
+                  >
+                    <X size={16}/> Cancelar
+                  </button>
+                )}
+              </div>
               <form onSubmit={(e) => enviarFormulario(e, 'materias', nuevaMateria, setNuevaMateria, initialMateria, setMaterias)} style={{display: 'flex', alignItems: 'flex-end', gap: '15px'}}>
-                <Input label="Clave" name="claveMateria" value={nuevaMateria.clave_materia} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required />
-                <Input label="Nombre de la Materia" name="nombreMateria" value={nuevaMateria.nombre_materia} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required style={{flex: 2}} />
-                <button type="submit" className="btn-primary" style={{marginBottom: '2px'}}>Agregar</button>
+                <Input label="Clave" name="claveMateria" value={nuevaMateria.claveMateria || ''} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required />
+                <Input label="Nombre de la Materia" name="nombreMateria" value={nuevaMateria.nombreMateria || ''} onChange={(e) => handleChange(e, setNuevaMateria, nuevaMateria)} required style={{flex: 2}} />
+                <button type="submit" className="btn-primary" style={{marginBottom: '2px'}}>{editId ? 'Actualizar' : 'Agregar'}</button>
               </form>
             </div>
-            <Table data={materias} columns={['claveMateria', 'nombreMateria']} />
+            <Table 
+                data={materias} 
+                columns={['claveMateria', 'nombreMateria']} 
+                onEdit={(item) => cargarEdicion(item, setNuevaMateria)}
+                onDelete={(id) => eliminarRegistro('materias', id, setMaterias)}
+            />
           </>
         )}
 
@@ -1116,13 +1335,29 @@ function App() {
         {vista === 'turnos' && usuario.rol === 'admin' && (
           <>
             <PageHeader title="Gestión de Turnos" subtitle="Horarios disponibles." />
-            <div className="card" style={{maxWidth: '500px'}}>
+            <div className="card" style={{maxWidth: '500px', borderLeft: editId ? '4px solid #f59e0b' : 'none'}}>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                <h3 style={{margin: 0}}>{editId ? 'Editar Turno' : 'Nuevo Turno'}</h3>
+                {editId && (
+                  <button 
+                    onClick={cancelarEdicion} 
+                    className="btn-cancel"
+                  >
+                    <X size={16}/> Cancelar
+                  </button>
+                )}
+              </div>
               <form onSubmit={(e) => enviarFormulario(e, 'turnos', nuevoTurno, setNuevoTurno, initialTurno, setTurnos)} style={{display: 'flex', gap: '15px', alignItems: 'flex-end'}}>
-                <Input label="Nombre del Turno" name="nombreTurno" value={nuevoTurno.nombre_turno} onChange={(e) => handleChange(e, setNuevoTurno, nuevoTurno)} required style={{flex: 1}}/>
-                <button type="submit" className="btn-primary">Crear</button>
+                <Input label="Nombre del Turno" name="nombreTurno" value={nuevoTurno.nombreTurno || ''} onChange={(e) => handleChange(e, setNuevoTurno, nuevoTurno)} required style={{flex: 1}}/>
+                <button type="submit" className="btn-primary">{editId ? 'Actualizar' : 'Crear'}</button>
               </form>
             </div>
-            <Table data={turnos} columns={['nombreTurno']} />
+            <Table 
+                data={turnos} 
+                columns={['nombreTurno']} 
+                onEdit={(item) => cargarEdicion(item, setNuevoTurno)}
+                onDelete={(id) => eliminarRegistro('turnos', id, setTurnos)}
+            />
           </>
         )}
 
@@ -1131,34 +1366,55 @@ function App() {
           <>
             <PageHeader title="Carga Académica" subtitle="Vinculación de docentes, materias y horarios." />
             <div className="card" style={{borderLeft: '4px solid var(--accent)'}}>
-              <h3 style={{marginTop:0}}>Nueva Asignación</h3>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                <h3 style={{margin: 0}}>{editId ? 'Editar Asignación' : 'Nueva Asignación'}</h3>
+                {editId && (
+                  <button 
+                    onClick={cancelarEdicion} 
+                    className="btn-cancel"
+                  >
+                    <X size={16}/> Cancelar
+                  </button>
+                )}
+              </div>
               <form onSubmit={(e) => enviarFormulario(e, 'asignaciones', nuevaAsignacion, setNuevaAsignacion, initialAsignacion, setAsignaciones)}>
                 <div className="form-grid">
-                  <Select label="Docente" name="maestro_id" value={nuevaAsignacion.maestro_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} options={maestros} labelKey={m => `${m.nombre} ${m.apellido}`} />
-                  <Select label="Materia" name="materia_id" value={nuevaAsignacion.materia_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} options={materias} labelKey="nombreMateria" />
-                  <Select label="Turno" name="turno_id" value={nuevaAsignacion.turno_id} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} options={turnos} labelKey="nombreTurno" />
+                  <Select label="Docente" name="maestro_id" value={nuevaAsignacion.maestro_id || ''} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} options={maestros} labelKey={m => `${m.nombre} ${m.apellido}`} />
+                  <Select label="Materia" name="materia_id" value={nuevaAsignacion.materia_id || ''} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} options={materias} labelKey="nombreMateria" />
+                  <Select label="Turno" name="turno_id" value={nuevaAsignacion.turno_id || ''} onChange={(e) => handleChange(e, setNuevaAsignacion, nuevaAsignacion)} options={turnos} labelKey="nombreTurno" />
                 </div>
-                <button type="submit" className="btn-primary">Asignar Carga</button>
+                <button type="submit" className="btn-primary">{editId ? 'Actualizar Carga' : 'Asignar Carga'}</button>
               </form>
             </div>
             {/* TABLA DE ASIGNACIONES + BOTÓN DE INSCRIBIR */}
             <div className="card table-container">
               <table>
                 <thead>
-                  <tr><th>ID</th><th>Docente</th><th>Materia Asignada</th><th>Turno</th><th>Acciones</th></tr>
+                  <tr><th>ID</th><th>Docente</th><th>Materia Asignada</th><th>Turno</th><th style={{textAlign:'center'}}>Acciones</th></tr>
                 </thead>
                 <tbody>
                   {asignaciones.map(a => (
                     <tr key={a.id}>
                       <td>#{a.id}</td>
                       <td style={{fontWeight: 500}}>{a.maestro ? `${a.maestro.nombre} ${a.maestro.apellido}` : '---'}</td>
-                      <td><span style={{background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85em'}}>{a.materia ? a.materia.nombre_materia : '---'}</span></td>
-                      <td>{a.turno ? a.turno.nombre_turno : '---'}</td>
-                      <td>
+                      <td><span style={{background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85em'}}>{a.materia ? a.materia.nombreMateria : '---'}</span></td>
+                      <td>{a.turno ? a.turno.nombreTurno : '---'}</td>
+                      <td style={{display: 'flex', gap: '8px', justifyContent: 'center'}}>
                         {/* Botón Inscribir Alumnos (Admin) */}
-                        <button className="btn-secondary" style={{padding: '6px 12px', fontSize: '0.85em', display: 'flex', gap: '5px', alignItems: 'center'}} onClick={() => setAsignacionParaInscribir(a)}>
+                        <button className="btn-secondary btn-icon btn-inscribe" style={{padding: '6px 12px', fontSize: '0.85em', display: 'flex', gap: '5px', alignItems: 'center'}} onClick={() => setAsignacionParaInscribir(a)}>
                           <UserPlus size={16}/> Inscribir
                         </button>
+                        <button onClick={() => {
+                            // Preparamos objeto para edición (extrayendo IDs de los objetos anidados)
+                            const itemEdit = {
+                                id: a.id,
+                                maestro_id: a.maestro?.id || '',
+                                materia_id: a.materia?.id || '',
+                                turno_id: a.turno?.id || ''
+                            };
+                            cargarEdicion(itemEdit, setNuevaAsignacion);
+                        }} className="btn-icon btn-edit" title="Editar"><Pencil size={16} /></button>
+                        <button onClick={() => eliminarRegistro('asignaciones', a.id, setAsignaciones)} className="btn-icon btn-delete"  title="Eliminar"><Trash2 size={16} /></button>
                       </td>
                     </tr>
                   ))}
@@ -1188,18 +1444,41 @@ const NavButton = ({ active, onClick, icon, label }) => (
 );
 
 // tablas
-const Table = ({ data, columns }) => (
+const Table = ({ data, columns, onEdit, onDelete }) => (
   <div className="card table-container">
     <table>
       <thead>
         <tr>
           {columns.map(c => <th key={c}>{c.replace('_', ' ')}</th>)}
+          {(onEdit || onDelete) && <th style={{width: '100px', textAlign: 'center'}}>Acciones</th>}
         </tr>
       </thead>
       <tbody>
         {data.length > 0 ? data.map(row => (
           <tr key={row.id}>
             {columns.map(col => <td key={col}>{row[col]}</td>)}
+            {(onEdit || onDelete) && (
+              <td style={{display: 'flex', gap: '8px', justifyContent: 'center'}}>
+                {onEdit && (
+                  <button 
+                    onClick={() => onEdit(row)} 
+                    className="btn-icon btn-edit" 
+                    title="Editar"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                )}
+                {onDelete && (
+                  <button 
+                    onClick={() => onDelete(row.id)} 
+                    className="btn-icon btn-delete" 
+                    title="Eliminar"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </td>
+            )}
           </tr>
         )) : (
           <tr>
