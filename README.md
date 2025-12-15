@@ -47,7 +47,7 @@ La aplicaci√≥n consume una API REST en Java y gestiona el estado de la aplicaci√
 ### Pasos
 1.  **Clonar el repositorio:**
     ```bash
-    git clone [https://github.com/YaelAdair11/proyecto_escolar_frontend.git](https://github.com/YaelAdair11/proyecto_escolar_frontend.git)
+    git clone https://github.com/YaelAdair11/proyecto_escolar_frontend.git
     cd proyecto_escolar_frontend
     ```
 
