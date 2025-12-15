@@ -1,4 +1,4 @@
-Sistema de Gestión Escolar - Frontend
+# Sistema de Gestión Escolar - Frontend
 
 Bienvenido al repositorio del Frontend. Esta es una **Single Page Application (SPA)** construida con **React y Vite**, diseñada para ofrecer una experiencia de usuario fluida y rápida para la gestión escolar.
 
